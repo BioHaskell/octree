@@ -12,6 +12,7 @@ import GHC.Real
 import Prelude hiding(lookup)
 -- testing
 import Data.List(sort)
+import Data.Bits((.&.))
 --import Data.Traversable
 --import Data.Foldable
 import Test.QuickCheck.All(quickCheckAll)
@@ -54,9 +55,9 @@ instance Num Coord
                     z = abs $ z a }
     signum = undefined
 
-dist u v = sqrt (a*a + b*b + c*c)
-  where Coord { x = a, y = b, z = c } = u - v
-        
+norm (Coord { x = a, y = b, z = c }) = sqrt (a*a + b*b + c*c)
+
+dist u v = norm (u - v) 
 
 instance Fractional Coord
   where
@@ -71,13 +72,15 @@ data Octree a = Node { split :: Coord,
                        nwu, nwd, neu, ned, swu, swd, seu, sed :: Octree a } |
                 Leaf [(Coord, a)]  deriving (Show)
 
-data ODir = NWU | NWD | NEU | NED | SWU | SWD | SEU | SED deriving (Eq, Ord, Enum)
+data ODir = NWU | NWD | NEU | NED | SWU | SWD | SEU | SED deriving (Eq, Ord, Enum, Show, Bounded)
 
-cmp ca cb = toEnum comparisonIndex
+cmp :: Coord -> Coord -> ODir
+cmp ca cb = joinStep (cx, cy, cz)
   where cx = x ca >= x cb
         cy = y ca >= y cb
         cz = z ca >= z cb
-        comparisonIndex = fromEnum cx + 2 * fromEnum cy + 4 * fromEnum cz
+
+joinStep (cx, cy, cz) = toEnum (fromEnum cx + 2 * fromEnum cy + 4 * fromEnum cz)
 
 octreeStep NWU = nwu
 octreeStep NWD = nwd
@@ -87,6 +90,65 @@ octreeStep SWU = swu
 octreeStep SWD = swd
 octreeStep SEU = seu
 octreeStep SED = sed
+
+splitStep :: ODir -> (Bool, Bool, Bool)
+splitStep step = ((val .&. 1) == 1, (val .&. 2) == 2, (val .&. 4) == 4)
+  where val = fromEnum step
+
+prop_stepDescription a b = splitStep (cmp a b) == (x a >= x b, y a >= y b, z a >= z b)
+
+-- here we assume that a, b, c > 0 (otherwise we will take abs, and correspondingly invert results)
+-- same octant
+-- dp = difference between given point and the center of Octree node
+octantDistance' dp SED = 0.0
+-- adjacent by plane
+octantDistance' dp SEU = z dp
+octantDistance' dp SWD = y dp
+octantDistance' dp NED = x dp
+-- adjacent by edge
+octantDistance' dp NWD = sqrt ( x dp * x dp + y dp * y dp)
+octantDistance' dp NEU = sqrt ( x dp * x dp + z dp * z dp)
+octantDistance' dp SWU = sqrt ( y dp * y dp + z dp * z dp)
+-- adjacent by point
+octantDistance' dp NWU = norm dp
+
+allOctants :: [ODir]
+allOctants = [minBound..maxBound]
+
+octantDistance :: Coord -> ODir -> Double
+octantDistance dp odir = octantDistance' (abs dp) (toggle odir)
+  where toggle odir | (u, v, w) <- splitStep odir =
+          joinStep ((x dp < 0) /= u,
+                    (y dp < 0) /= v,
+                    (z dp < 0) /= w)
+
+prop_octantDistanceNoGreaterThanInterpointDistance ptA ptB vp = triangleInequality || sameOctant
+  where triangleInequality = (octantDistance (ptA - vp) (cmp ptB vp)) <= (dist ptA ptB)
+        sameOctant         = (cmp ptA vp) == (cmp ptB vp)
+
+prop_octantDistanceNoGreaterThanInterpointDistance2 ptA ptB = triangleInequality || sameOctant
+  where triangleInequality = (octantDistance ptA (cmp ptB vp)) <= (dist ptA ptB)
+        sameOctant         = (cmp ptA origin) == (cmp ptB origin)
+        origin             = Coord 0.0 0.0 0.0
+
+prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
+  where testFun odir = (octantDistance (pt - vp) odir) <= dist pt vp
+
+-- broken test:
+ptA = Coord {x = -13.23196682911955, y = -8.401461286346109, z = -3.8468662238099633}
+ptB = Coord {x = -4.860973799468999, y = 1.013112426587677, z = 3.8485866240895135}
+vp  = Coord {x = 2.0701017732745304, y = 1.3161264450762526, z = 0.8424579758060208} 
+
+-- TODO: TEST: check that all points in all sibling octants are no less than octantDistance away...
+
+data OAxis = AxisX | AxisY | AxisZ deriving (Eq, Ord, Enum)
+
+getAxis AxisX pt = x pt
+getAxis AxisY pt = y pt
+getAxis AxisZ pt = z pt
+
+--crossedAxes pt vp distance = undefined
+--  where prefDir = cmp pt vp
 
 splitBy :: Coord -> [(Coord, a)] -> ([(Coord, a)],
                                      [(Coord, a)],
@@ -175,7 +237,13 @@ neighbors   = undefined
 
 -- TODO: nearest
 nearest pt (Leaf l) = pickClosest pt l
-nearest pt node     = undefined
+nearest pt node     = nearest' candidate
+  where candidate = nearest pt (octreeStep prefDir)
+        prefDir   = cmp pt (split node)
+        nearest' (Just vp) | dist pt vp <= dist pt (split node) = undefined
+        nearest  _           =  undefined
+
+sphereIntersectsAxis pt r axisNum axisVal = undefined
     
 pickClosest pt []     = Nothing
 pickClosest pt (a:as) = Just $ foldr (pickCloser pt) a as
