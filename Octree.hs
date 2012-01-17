@@ -11,7 +11,8 @@ import Text.Show
 import GHC.Real
 import Prelude hiding(lookup)
 -- testing
-import Data.List(sort)
+import Data.List(sort, sortBy)
+import Data.Maybe(maybeToList)
 import Data.Bits((.&.))
 --import Data.Traversable
 --import Data.Foldable
@@ -139,17 +140,9 @@ toggle dp odir | (u, v, w) <- splitStep odir =
 prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality 
   where triangleInequality = (octantDistance' aptA (cmp ptB origin)) <= (dist aptA ptB)
         aptA               = abs ptA
---        aptB               = (Coord { x= -1.0, y= 1.0, z= 1.0}) * abs ptB
 
 origin :: Coord
 origin = fromInteger 0
-
--- broken test:
-xptA = Coord {x = 1.4310035023233023, y = 1.7821106948813177, z = 6.450931977529442}
-xptB = Coord {x = 0.6862298367071903, y = -2.6566246605932253, z = -6.087288160217668}
-aptA               = abs xptA
-aptB               = (Coord { x= -1.0, y= 1.0, z= 1.0}) * abs xptB
-
 
 octantDistances dp = [(o, octantDistance' dp o) | o <- allOctants]
 
@@ -164,17 +157,6 @@ prop_octantDistanceNoGreaterThanInterpointDistanceZero ptA ptB = triangleInequal
 prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
   where testFun odir = (octantDistance (pt - vp) odir) <= dist pt vp
 
-
--- TODO: TEST: check that all points in all sibling octants are no less than octantDistance away...
-
-data OAxis = AxisX | AxisY | AxisZ deriving (Eq, Ord, Enum)
-
-getAxis AxisX pt = x pt
-getAxis AxisY pt = y pt
-getAxis AxisZ pt = z pt
-
---crossedAxes pt vp distance = undefined
---  where prefDir = cmp pt vp
 
 splitBy :: Coord -> [(Coord, a)] -> ([(Coord, a)],
                                      [(Coord, a)],
@@ -243,16 +225,16 @@ pathTo pt (Leaf _) = []
 pathTo pt node     = aStep : pathTo pt (octreeStep aStep node)
   where aStep = cmp pt (split node)
 
-applyByPath f []          ot       = f ot
-applyByPath f (step:path) node     = case step of
-                                       NWU -> node{ nwu = applyByPath f path (nwu node) }
-                                       NWD -> node{ nwd = applyByPath f path (nwd node) }
-                                       NEU -> node{ neu = applyByPath f path (neu node) }
-                                       NED -> node{ ned = applyByPath f path (ned node) }
-                                       SWU -> node{ swu = applyByPath f path (swu node) }
-                                       SWD -> node{ swd = applyByPath f path (swd node) }
-                                       SEU -> node{ seu = applyByPath f path (seu node) }
-                                       SED -> node{ sed = applyByPath f path (sed node) }
+applyByPath f []          ot   = f ot
+applyByPath f (step:path) node = case step of
+                                   NWU -> node{ nwu = applyByPath f path (nwu node) }
+                                   NWD -> node{ nwd = applyByPath f path (nwd node) }
+                                   NEU -> node{ neu = applyByPath f path (neu node) }
+                                   NED -> node{ ned = applyByPath f path (ned node) }
+                                   SWU -> node{ swu = applyByPath f path (swu node) }
+                                   SWD -> node{ swd = applyByPath f path (swd node) }
+                                   SEU -> node{ seu = applyByPath f path (seu node) }
+                                   SED -> node{ sed = applyByPath f path (sed node) }
 
 lookup      = undefined
 -- TODO: think about re-balancing
@@ -263,14 +245,23 @@ neighbors   = undefined
 
 -- TODO: nearest
 nearest pt (Leaf l) = pickClosest pt l
-nearest pt node     = nearest' candidate
-  where candidate = nearest pt (octreeStep prefDir)
-        prefDir   = cmp pt (split node)
-        nearest' (Just vp) | dist pt vp <= dist pt (split node) = undefined
-        nearest  _           =  undefined
+nearest pt node     = selectFrom candidates
+  where candidates                 = map findCandidate . sortBy compareDistance . octantDistances $ pt - split node
+        compareDistance a b  = compare (snd a) (snd b)
+        findCandidate ( octant, d) = (maybeToList . nearest pt $ octreeStep octant $ node, d)
+        selectFrom (([],     _d) : cs) = selectFrom       cs
+        selectFrom (([best], _d) : cs) = selectFrom' best cs
+        selectFrom []                  = Nothing
 
-sphereIntersectsAxis pt r axisNum axisVal = undefined
-    
+        
+        selectFrom' best (([],     d) : cs)                          = selectFrom' best     cs
+        selectFrom' best ((c,      d) : cs) | d > dist pt (fst best) = Just best -- shortcut guard to avoid recursion over whole structure (since d is bound for distance within octant)
+        selectFrom' best (([next], d) : cs)                          = selectFrom' nextBest cs
+          where nextBest = if dist pt (fst best) <= dist pt (fst next)
+                             then best
+                             else next
+        selectFrom' best []                                          = Just best
+
 pickClosest pt []     = Nothing
 pickClosest pt (a:as) = Just $ foldr (pickCloser pt) a as
 pickCloser pt va@(a, _a) vb@(b, _b) = if dist pt a <= dist pt b
@@ -281,6 +272,12 @@ withinRange = undefined
 -- QuickCheck
 prop_fromToList         l = sort l == (sort . toList . fromList $ l)
 prop_insertionPreserved l = sort l == (sort . toList . foldr insert (Leaf []) $ l)
+prop_nearest            l pt = nearest pt (fromList l) == naiveNearest l pt
+
+compareDistance pt a b = compare (dist pt (fst a)) (dist pt (fst b))
+
+naiveNearest l pt = if byDist == [] then Nothing else Just . head $ byDist
+  where byDist = sortBy (compareDistance pt) l
 
 runTests = $quickCheckAll
 
