@@ -158,6 +158,7 @@ prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
   where testFun odir = (octantDistance (pt - vp) odir) <= dist pt vp
 
 
+-- FIXME: VERY IMPORTANT - add prop_splitBy vs cmp
 splitBy :: Coord -> [(Coord, a)] -> ([(Coord, a)],
                                      [(Coord, a)],
                                      [(Coord, a)],
@@ -169,16 +170,16 @@ splitBy :: Coord -> [(Coord, a)] -> ([(Coord, a)],
 splitBy aPoint [] = ([], [], [], [], [], [], [], [])
 splitBy aPoint ((pt@(coord, a)):aList) =
    case i of
-     NWU -> (pt:nwu,    nwd,    neu,    ned,    swu,    swd,    seu,    sed)
-     NWD -> (   nwu, pt:nwd,    neu,    ned,    swu,    swd,    seu,    sed)
-     NEU -> (   nwu,    nwd, pt:neu,    ned,    swu,    swd,    seu,    sed)
-     NED -> (   nwu,    nwd,    neu, pt:ned,    swu,    swd,    seu,    sed)
-     SWU -> (   nwu,    nwd,    neu,    ned, pt:swu,    swd,    seu,    sed)
-     SWD -> (   nwu,    nwd,    neu,    ned,    swu, pt:swd,    seu,    sed)
-     SEU -> (   nwu,    nwd,    neu,    ned,    swu,    swd, pt:seu,    sed)
-     SED -> (   nwu,    nwd,    neu,    ned,    swu,    swd,    seu, pt:sed)
+     SWD -> (pt:swd,    sed,    nwd,    ned,    swu,    seu,    nwu,    neu)
+     SED -> (   swd, pt:sed,    nwd,    ned,    swu,    seu,    nwu,    neu)
+     NWD -> (   swd,    sed, pt:nwd,    ned,    swu,    seu,    nwu,    neu)
+     NED -> (   swd,    sed,    nwd, pt:ned,    swu,    seu,    nwu,    neu)
+     SWU -> (   swd,    sed,    nwd,    ned, pt:swu,    seu,    nwu,    neu)
+     SEU -> (   swd,    sed,    nwd,    ned,    swu, pt:seu,    nwu,    neu)
+     NWU -> (   swd,    sed,    nwd,    ned,    swu,    seu, pt:nwu,    neu)
+     NEU -> (   swd,    sed,    nwd,    ned,    swu,    seu,    nwu, pt:neu)
   where i                                        = cmp aPoint coord 
-        (nwu, nwd, neu, ned, swu, swd, seu, sed) = splitBy aPoint aList
+        (swd, sed, nwd, ned, swu, seu, nwu, neu) = splitBy aPoint aList
 
 sumCoords [(coord, _)]       = coord
 sumCoords ((coord, _):aList) = coord + sumCoords aList
@@ -196,7 +197,7 @@ fromList :: [(Coord, a)] -> Octree a
 fromList aList = if length aList <= leafLimit
                    then Leaf aList
                    else let splitPoint :: Coord = massCenter aList
-                            (tnwu, tnwd, tneu, tned, tswu, tswd, tseu, tsed) = tmap fromList $ splitBy splitPoint aList
+                            (tswd, tsed, tnwd, tned, tswu, tseu, tnwu, tneu) = tmap fromList $ splitBy splitPoint aList
                         in Node { split = splitPoint,
                                   nwu   = tnwu,
                                   nwd   = tnwd,
@@ -243,6 +244,12 @@ insert (pt, dat) ot = applyByPath insert' path ot
         insert' (Leaf l) = fromList ((pt, dat) : l)
 neighbors   = undefined
 
+candidates' pt (Leaf l) = []
+candidates' pt node     = map findCandidates . sortBy compareDistance . octantDistances $ pt - split node
+  where
+    findCandidates (octant, d) = (octant, d, maybeToList . pickClosest pt . toList . octreeStep octant $ node)
+    compareDistance a b  = compare (snd a) (snd b)
+
 -- TODO: nearest
 nearest pt (Leaf l) = pickClosest pt l
 nearest pt node     = selectFrom candidates
@@ -255,7 +262,8 @@ nearest pt node     = selectFrom candidates
 
         
         selectFrom' best (([],     d) : cs)                          = selectFrom' best     cs
-        selectFrom' best ((c,      d) : cs) | d > dist pt (fst best) = Just best -- shortcut guard to avoid recursion over whole structure (since d is bound for distance within octant)
+        -- TODO: FAILS: shortcut guard to avoid recursion over whole structure (since d is bound for distance within octant):
+        --selectFrom' best ((c,      d) : cs) | d > dist pt (fst best) = Just best
         selectFrom' best (([next], d) : cs)                          = selectFrom' nextBest cs
           where nextBest = if dist pt (fst best) <= dist pt (fst next)
                              then best
@@ -265,19 +273,24 @@ nearest pt node     = selectFrom candidates
 pickClosest pt []     = Nothing
 pickClosest pt (a:as) = Just $ foldr (pickCloser pt) a as
 pickCloser pt va@(a, _a) vb@(b, _b) = if dist pt a <= dist pt b
-                                  then va
-                                  else vb
+                                        then va
+                                        else vb
 withinRange = undefined
 
 -- QuickCheck
 prop_fromToList         l = sort l == (sort . toList . fromList $ l)
 prop_insertionPreserved l = sort l == (sort . toList . foldr insert (Leaf []) $ l)
 prop_nearest            l pt = nearest pt (fromList l) == naiveNearest l pt
+prop_pickClosest        l pt = pickClosest pt l == naiveNearest l pt
 
 compareDistance pt a b = compare (dist pt (fst a)) (dist pt (fst b))
 
 naiveNearest l pt = if byDist == [] then Nothing else Just . head $ byDist
   where byDist = sortBy (compareDistance pt) l
+
+testList = [(Coord {x = -91.04901811601876, y = 11.426013200436955, z = 16.647031370019647},0),(Coord {x = -12.935215796029725, y = 273.06637813843406, z = -55.05942073820639},0),(Coord {x = -24.70608961609365, y = 9.768334667913571, z = -591.735874813091},0),(Coord {x = 26.673862637209673, y = 14.861111850434305, z = -0.5439453260021949},0),(Coord {x = 57.400581024453736, y = -144.91120044321454, z = 24.03491739822036},0),(Coord {x = -11.43201309196567, y = 3.7804836420166694, z = -24.717463780970363},0),(Coord {x = 10.651535005098076, y = 10.6173986252353, z = -15.759345133357492},0),(Coord {x = -77.72525450628606, y = -15.977408392409531, z = -267.34076708407065},0),(Coord {x = -41.756366021666814, y = 17.893349521294244, z = -13.249495155771942},0),(Coord {x = -37.70403327605951, y = -23.28563337728081, z = 10.722245287874406},0),(Coord {x = 42.27238607587282, y = 15.570709306523009, z = -26.807306838698615},0),(Coord {x = -36.19853573880914, y = -553.9078556075585, z = 0.6473478811917106},0),(Coord {x = -21.27163250648984, y = -27.708729303970568, z = -8.556708721822678},0),(Coord {x = 20.15432607521134, y = 1.1542390859566, z = -126.74544260690091},0),(Coord {x = -12.166463863760978, y = 13.126246517336506, z = -61.762520268470375},0),(Coord {x = 1.2054792198915618, y = -82.74805704521371, z = 6.020451056976829},0),(Coord {x = 40.951653683373564, y = 1.2099796994804364, z = -55.73588538475787},0)]
+testList2 = map (\(c, _a) -> (c, dist c testPt)) testList
+testPt = Coord {x = 4.871607516633762, y = 40.71735564629869, z = 18.77074208349906} 
 
 runTests = $quickCheckAll
 
