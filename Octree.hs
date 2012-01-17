@@ -47,9 +47,10 @@ instance Num Coord
     negate a = Coord { x = negate $ x a,
                        y = negate $ y a,
                        z = negate $ z a }
-    fromInteger i = Coord { x = fromInteger i,
-                            y = fromInteger i,
-                            z = fromInteger i }
+    fromInteger i = Coord { x = f,
+                            y = f,
+                            z = f }
+      where f = fromInteger i
     abs a = Coord { x = abs $ x a,
                     y = abs $ y a,
                     z = abs $ z a }
@@ -72,13 +73,20 @@ data Octree a = Node { split :: Coord,
                        nwu, nwd, neu, ned, swu, swd, seu, sed :: Octree a } |
                 Leaf [(Coord, a)]  deriving (Show)
 
-data ODir = NWU | NWD | NEU | NED | SWU | SWD | SEU | SED deriving (Eq, Ord, Enum, Show, Bounded)
+-- TODO: assure that enum numbers are assigned in order
+data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enum, Show, Bounded)
 
 cmp :: Coord -> Coord -> ODir
 cmp ca cb = joinStep (cx, cy, cz)
   where cx = x ca >= x cb
         cy = y ca >= y cb
         cz = z ca >= z cb
+
+prop_cmp1 a b = cmp a b == joinStep (dx >= 0, dy >= 0, dz >= 0)
+  where Coord dx dy dz = a - b
+
+prop_cmp2 a = cmp a origin == joinStep (dx >= 0, dy >= 0, dz >= 0)
+  where Coord dx dy dz = a
 
 joinStep (cx, cy, cz) = toEnum (fromEnum cx + 2 * fromEnum cy + 4 * fromEnum cz)
 
@@ -100,44 +108,62 @@ prop_stepDescription a b = splitStep (cmp a b) == (x a >= x b, y a >= y b, z a >
 -- here we assume that a, b, c > 0 (otherwise we will take abs, and correspondingly invert results)
 -- same octant
 -- dp = difference between given point and the center of Octree node
-octantDistance' dp SED = 0.0
+octantDistance' dp NEU = 0.0
 -- adjacent by plane
-octantDistance' dp SEU = z dp
-octantDistance' dp SWD = y dp
-octantDistance' dp NED = x dp
+octantDistance' dp NWU = x dp
+octantDistance' dp SEU = y dp
+octantDistance' dp NED = z dp
 -- adjacent by edge
-octantDistance' dp NWD = sqrt ( x dp * x dp + y dp * y dp)
-octantDistance' dp NEU = sqrt ( x dp * x dp + z dp * z dp)
-octantDistance' dp SWU = sqrt ( y dp * y dp + z dp * z dp)
+octantDistance' dp SWU = sqrt ( x dp * x dp + y dp * y dp)
+octantDistance' dp SED = sqrt ( y dp * y dp + z dp * z dp)
+octantDistance' dp NWD = sqrt ( x dp * x dp + z dp * z dp)
 -- adjacent by point
-octantDistance' dp NWU = norm dp
+octantDistance' dp SWD = norm dp
 
 allOctants :: [ODir]
 allOctants = [minBound..maxBound]
 
+xor :: Bool -> Bool -> Bool
+xor = (/=)
+
 octantDistance :: Coord -> ODir -> Double
-octantDistance dp odir = octantDistance' (abs dp) (toggle odir)
-  where toggle odir | (u, v, w) <- splitStep odir =
-          joinStep ((x dp < 0) /= u,
-                    (y dp < 0) /= v,
-                    (z dp < 0) /= w)
+octantDistance dp odir = octantDistance' (abs dp) (toggle dp odir)
+
+toggle :: Coord -> ODir -> ODir
+toggle dp odir | (u, v, w) <- splitStep odir = 
+  joinStep ((x dp >= 0) `xor` not u,
+            (y dp >= 0) `xor` not v,
+            (z dp >= 0) `xor` not w)
+
+
+prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality 
+  where triangleInequality = (octantDistance' aptA (cmp ptB origin)) <= (dist aptA ptB)
+        aptA               = abs ptA
+--        aptB               = (Coord { x= -1.0, y= 1.0, z= 1.0}) * abs ptB
+
+origin :: Coord
+origin = fromInteger 0
+
+-- broken test:
+xptA = Coord {x = 1.4310035023233023, y = 1.7821106948813177, z = 6.450931977529442}
+xptB = Coord {x = 0.6862298367071903, y = -2.6566246605932253, z = -6.087288160217668}
+aptA               = abs xptA
+aptB               = (Coord { x= -1.0, y= 1.0, z= 1.0}) * abs xptB
+
+
+octantDistances dp = [(o, octantDistance' dp o) | o <- allOctants]
 
 prop_octantDistanceNoGreaterThanInterpointDistance ptA ptB vp = triangleInequality || sameOctant
   where triangleInequality = (octantDistance (ptA - vp) (cmp ptB vp)) <= (dist ptA ptB)
         sameOctant         = (cmp ptA vp) == (cmp ptB vp)
 
-prop_octantDistanceNoGreaterThanInterpointDistance2 ptA ptB = triangleInequality || sameOctant
-  where triangleInequality = (octantDistance ptA (cmp ptB vp)) <= (dist ptA ptB)
+prop_octantDistanceNoGreaterThanInterpointDistanceZero ptA ptB = triangleInequality || sameOctant
+  where triangleInequality = (octantDistance ptA (cmp ptB origin)) <= (dist ptA ptB)
         sameOctant         = (cmp ptA origin) == (cmp ptB origin)
-        origin             = Coord 0.0 0.0 0.0
 
 prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
   where testFun odir = (octantDistance (pt - vp) odir) <= dist pt vp
 
--- broken test:
-ptA = Coord {x = -13.23196682911955, y = -8.401461286346109, z = -3.8468662238099633}
-ptB = Coord {x = -4.860973799468999, y = 1.013112426587677, z = 3.8485866240895135}
-vp  = Coord {x = 2.0701017732745304, y = 1.3161264450762526, z = 0.8424579758060208} 
 
 -- TODO: TEST: check that all points in all sibling octants are no less than octantDistance away...
 
