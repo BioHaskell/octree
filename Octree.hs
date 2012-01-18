@@ -72,7 +72,7 @@ instance Fractional Coord
 
 data Octree a = Node { split :: Coord,
                        nwu, nwd, neu, ned, swu, swd, seu, sed :: Octree a } |
-                Leaf [(Coord, a)]  deriving (Show)
+                Leaf { unLeaf :: [(Coord, a)] }  deriving (Show)
 
 -- TODO: assure that enum numbers are assigned in order
 data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enum, Show, Bounded)
@@ -144,7 +144,7 @@ prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality
 origin :: Coord
 origin = fromInteger 0
 
-octantDistances dp = [(o, octantDistance' dp o) | o <- allOctants]
+octantDistances dp = [(o, octantDistance dp o) | o <- allOctants]
 
 prop_octantDistanceNoGreaterThanInterpointDistance ptA ptB vp = triangleInequality || sameOctant
   where triangleInequality = (octantDistance (ptA - vp) (cmp ptB vp)) <= (dist ptA ptB)
@@ -167,8 +167,8 @@ splitBy :: Coord -> [(Coord, a)] -> ([(Coord, a)],
                                      [(Coord, a)],
                                      [(Coord, a)],
                                      [(Coord, a)])
-splitBy aPoint [] = ([], [], [], [], [], [], [], [])
-splitBy aPoint ((pt@(coord, a)):aList) =
+splitBy splitPoint [] = ([], [], [], [], [], [], [], [])
+splitBy splitPoint ((pt@(coord, a)):aList) =
    case i of
      SWD -> (pt:swd,    sed,    nwd,    ned,    swu,    seu,    nwu,    neu)
      SED -> (   swd, pt:sed,    nwd,    ned,    swu,    seu,    nwu,    neu)
@@ -178,8 +178,13 @@ splitBy aPoint ((pt@(coord, a)):aList) =
      SEU -> (   swd,    sed,    nwd,    ned,    swu, pt:seu,    nwu,    neu)
      NWU -> (   swd,    sed,    nwd,    ned,    swu,    seu, pt:nwu,    neu)
      NEU -> (   swd,    sed,    nwd,    ned,    swu,    seu,    nwu, pt:neu)
-  where i                                        = cmp aPoint coord 
-        (swd, sed, nwd, ned, swu, seu, nwu, neu) = splitBy aPoint aList
+  where i                                        = cmp coord splitPoint
+        (swd, sed, nwd, ned, swu, seu, nwu, neu) = splitBy splitPoint aList
+
+prop_splitByPrime split pt = (unLeaf . octreeStep step $ ot) == [arg]
+  where ot   = splitBy' Leaf split [arg] 
+        step = cmp pt split
+        arg  = (pt, dist pt split)
 
 sumCoords [(coord, _)]       = coord
 sumCoords ((coord, _):aList) = coord + sumCoords aList
@@ -197,16 +202,18 @@ fromList :: [(Coord, a)] -> Octree a
 fromList aList = if length aList <= leafLimit
                    then Leaf aList
                    else let splitPoint :: Coord = massCenter aList
-                            (tswd, tsed, tnwd, tned, tswu, tseu, tnwu, tneu) = tmap fromList $ splitBy splitPoint aList
-                        in Node { split = splitPoint,
-                                  nwu   = tnwu,
-                                  nwd   = tnwd,
-                                  neu   = tneu,
-                                  ned   = tned,
-                                  swu   = tswu,
-                                  swd   = tswd,
-                                  seu   = tseu,
-                                  sed   = tsed }
+                        in splitBy' fromList splitPoint aList
+splitBy' f splitPoint aList = Node { split = splitPoint,
+                                     nwu   = tnwu,
+                                     nwd   = tnwd,
+                                     neu   = tneu,
+                                     ned   = tned,
+                                     swu   = tswu,
+                                     swd   = tswd,
+                                     seu   = tseu,
+                                     sed   = tsed }
+  where
+    (tswd, tsed, tnwd, tned, tswu, tseu, tnwu, tneu) = tmap f $ splitBy splitPoint aList
 -- TODO: use arrays for memory savings
 
 toList' (Leaf l     ) tmp = l ++ tmp
@@ -263,7 +270,7 @@ nearest pt node     = selectFrom candidates
         
         selectFrom' best (([],     d) : cs)                          = selectFrom' best     cs
         -- TODO: FAILS: shortcut guard to avoid recursion over whole structure (since d is bound for distance within octant):
-        --selectFrom' best ((c,      d) : cs) | d > dist pt (fst best) = Just best
+        selectFrom' best ((c,      d) : cs) | d > dist pt (fst best) = Just best
         selectFrom' best (([next], d) : cs)                          = selectFrom' nextBest cs
           where nextBest = if dist pt (fst best) <= dist pt (fst next)
                              then best
@@ -287,10 +294,6 @@ compareDistance pt a b = compare (dist pt (fst a)) (dist pt (fst b))
 
 naiveNearest l pt = if byDist == [] then Nothing else Just . head $ byDist
   where byDist = sortBy (compareDistance pt) l
-
-testList = [(Coord {x = -91.04901811601876, y = 11.426013200436955, z = 16.647031370019647},0),(Coord {x = -12.935215796029725, y = 273.06637813843406, z = -55.05942073820639},0),(Coord {x = -24.70608961609365, y = 9.768334667913571, z = -591.735874813091},0),(Coord {x = 26.673862637209673, y = 14.861111850434305, z = -0.5439453260021949},0),(Coord {x = 57.400581024453736, y = -144.91120044321454, z = 24.03491739822036},0),(Coord {x = -11.43201309196567, y = 3.7804836420166694, z = -24.717463780970363},0),(Coord {x = 10.651535005098076, y = 10.6173986252353, z = -15.759345133357492},0),(Coord {x = -77.72525450628606, y = -15.977408392409531, z = -267.34076708407065},0),(Coord {x = -41.756366021666814, y = 17.893349521294244, z = -13.249495155771942},0),(Coord {x = -37.70403327605951, y = -23.28563337728081, z = 10.722245287874406},0),(Coord {x = 42.27238607587282, y = 15.570709306523009, z = -26.807306838698615},0),(Coord {x = -36.19853573880914, y = -553.9078556075585, z = 0.6473478811917106},0),(Coord {x = -21.27163250648984, y = -27.708729303970568, z = -8.556708721822678},0),(Coord {x = 20.15432607521134, y = 1.1542390859566, z = -126.74544260690091},0),(Coord {x = -12.166463863760978, y = 13.126246517336506, z = -61.762520268470375},0),(Coord {x = 1.2054792198915618, y = -82.74805704521371, z = 6.020451056976829},0),(Coord {x = 40.951653683373564, y = 1.2099796994804364, z = -55.73588538475787},0)]
-testList2 = map (\(c, _a) -> (c, dist c testPt)) testList
-testPt = Coord {x = 4.871607516633762, y = 40.71735564629869, z = 18.77074208349906} 
 
 runTests = $quickCheckAll
 
