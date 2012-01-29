@@ -1,5 +1,5 @@
 {-# LANGUAGE MagicHash, ScopedTypeVariables, RecordWildCards, TemplateHaskell #-}
-module Data.Octree.Internal(Coord(..), dist,
+module Data.Octree.Internal(Vector3(..), dist,
                             Octree(..), lookup, neighbors, nearest, withinRange, fromList, toList, insert,
                             -- internal
                             ODir,
@@ -7,6 +7,9 @@ module Data.Octree.Internal(Coord(..), dist,
                             cmp, origin,
                             pickClosest
                             ) where
+
+import Data.Vector.V3
+import Data.Vector.Class
 
 import Text.Show
 import Prelude hiding(lookup)
@@ -16,58 +19,29 @@ import Data.Bits((.&.))
 import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
 
-data Coord = Coord { x, y, z :: !Double } deriving (Show, Eq, Ord)
+x = v3x
+y = v3y
+z = v3z
 
-instance Arbitrary Coord
+{-
+instance Arbitrary Vector3
   where
     arbitrary = do (a, b, c) <- arbitrary
-                   return Coord {x = a, y = b, z = c}
-
+                   return Vector3 {x = a, y = b, z = c}
+-}
 
 --{-# OPTIONS_GHC -F -pgmFderive -optF-F #-}
---data Coord = Coord { x, y, z :: !Double } deriving (Show, Eq, Ord {-! Arbitrary !-} )
+--data Vector3 = Vector3 { x, y, z :: !Double } deriving (Show, Eq, Ord {-! Arbitrary !-} )
 -- Using Neil Mitchell's 'derive'
 
-instance Num Coord
-  where
-    a + b = Coord { x = x a + x b,
-                    y = y a + y b,
-                    z = z a + z b }
-    a - b = Coord { x = x a - x b,
-                    y = y a - y b,
-                    z = z a - z b }
-    a * b = Coord { x = x a * x b,
-                    y = y a * y b,
-                    z = z a * z b }
-    negate a = Coord { x = negate $ x a,
-                       y = negate $ y a,
-                       z = negate $ z a }
-    fromInteger i = Coord { x = f,
-                            y = f,
-                            z = f }
-      where f = fromInteger i
-    abs a = Coord { x = abs $ x a,
-                    y = abs $ y a,
-                    z = abs $ z a }
-    signum = undefined
 
-norm (Coord { x = a, y = b, z = c }) = sqrt (a*a + b*b + c*c)
+norm a = a `vdot` a
 
 dist u v = norm (u - v) 
 
-instance Fractional Coord
-  where
-    a / b = Coord { x = x a / x b,
-                    y = y a / y b,
-                    z = z a / z b }
-    recip a = fromInteger 1 / a
-    fromRational r = Coord { x = f, y = f, z = f }
-      where f = fromRational r
-
-
-data Octree a = Node { split :: Coord,
+data Octree a = Node { split :: Vector3,
                        nwu, nwd, neu, ned, swu, swd, seu, sed :: Octree a } |
-                Leaf { unLeaf :: [(Coord, a)] }  deriving (Show)
+                Leaf { unLeaf :: [(Vector3, a)] }  deriving (Show)
 
 instance Functor Octree where
   fmap f (Leaf l) = Leaf . fmap (\(c, a) -> (c, f a)) $  l
@@ -92,17 +66,17 @@ instance Functor Octree where
 -- TODO: assure that enum numbers are assigned in order
 data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enum, Show, Bounded)
 
-cmp :: Coord -> Coord -> ODir
+cmp :: Vector3 -> Vector3 -> ODir
 cmp ca cb = joinStep (cx, cy, cz)
   where cx = x ca >= x cb
         cy = y ca >= y cb
         cz = z ca >= z cb
 
 prop_cmp1 a b = cmp a b == joinStep (dx >= 0, dy >= 0, dz >= 0)
-  where Coord dx dy dz = a - b
+  where Vector3 dx dy dz = a - b
 
 prop_cmp2 a = cmp a origin == joinStep (dx >= 0, dy >= 0, dz >= 0)
-  where Coord dx dy dz = a
+  where Vector3 dx dy dz = a
 
 joinStep (cx, cy, cz) = toEnum (fromEnum cx + 2 * fromEnum cy + 4 * fromEnum cz)
 
@@ -142,10 +116,10 @@ allOctants = [minBound..maxBound]
 xor :: Bool -> Bool -> Bool
 xor = (/=)
 
-octantDistance :: Coord -> ODir -> Double
+octantDistance :: Vector3 -> ODir -> Double
 octantDistance dp odir = octantDistance' (abs dp) (toggle dp odir)
 
-toggle :: Coord -> ODir -> ODir
+toggle :: Vector3 -> ODir -> ODir
 toggle dp odir | (u, v, w) <- splitStep odir = 
   joinStep ((x dp >= 0) `xor` not u,
             (y dp >= 0) `xor` not v,
@@ -156,7 +130,7 @@ prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality
   where triangleInequality = (octantDistance' aptA (cmp ptB origin)) <= (dist aptA ptB)
         aptA               = abs ptA
 
-origin :: Coord
+origin :: Vector3
 origin = fromInteger 0
 
 octantDistances dp = [(o, octantDistance dp o) | o <- allOctants]
@@ -174,14 +148,14 @@ prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
 
 
 -- FIXME: VERY IMPORTANT - add prop_splitBy vs cmp
-splitBy :: Coord -> [(Coord, a)] -> ([(Coord, a)],
-                                     [(Coord, a)],
-                                     [(Coord, a)],
-                                     [(Coord, a)],
-                                     [(Coord, a)],
-                                     [(Coord, a)],
-                                     [(Coord, a)],
-                                     [(Coord, a)])
+splitBy :: Vector3 -> [(Vector3, a)] -> ([(Vector3, a)],
+                                     [(Vector3, a)],
+                                     [(Vector3, a)],
+                                     [(Vector3, a)],
+                                     [(Vector3, a)],
+                                     [(Vector3, a)],
+                                     [(Vector3, a)],
+                                     [(Vector3, a)])
 splitBy splitPoint [] = ([], [], [], [], [], [], [], [])
 splitBy splitPoint ((pt@(coord, a)):aList) =
    case i of
@@ -196,10 +170,10 @@ splitBy splitPoint ((pt@(coord, a)):aList) =
   where i                                        = cmp coord splitPoint
         (swd, sed, nwd, ned, swu, seu, nwu, neu) = splitBy splitPoint aList
 
-sumCoords [(coord, _)]       = coord
-sumCoords ((coord, _):aList) = coord + sumCoords aList
+sumVector3s [(coord, _)]       = coord
+sumVector3s ((coord, _):aList) = coord + sumVector3s aList
 
-massCenter aList = sumCoords aList / (fromInteger . toInteger . length $ aList)
+massCenter aList = sumVector3s aList / (fromInteger . toInteger . length $ aList)
 
 -- TODO: should be pre-defined in Data.Tuple or derived?
 -- UTILITY
@@ -208,10 +182,10 @@ tmap t (a, b, c, d, e, f, g, h) = (t a, t b, t c, t d, t e, t f, t g, t h)
 leafLimit :: Int
 leafLimit = 16
 
-fromList :: [(Coord, a)] -> Octree a
+fromList :: [(Vector3, a)] -> Octree a
 fromList aList = if length aList <= leafLimit
                    then Leaf aList
-                   else let splitPoint :: Coord = massCenter aList
+                   else let splitPoint :: Vector3 = massCenter aList
                         in splitBy' fromList splitPoint aList
 splitBy' f splitPoint aList = Node { split = splitPoint,
                                      nwu   = tnwu,

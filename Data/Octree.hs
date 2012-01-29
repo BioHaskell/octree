@@ -1,6 +1,6 @@
 {-# LANGUAGE MagicHash, ScopedTypeVariables, RecordWildCards, TemplateHaskell #-}
 module Data.Octree(Octree,
-                   Coord(..),
+                   Vector3(..),
                    dist, 
                    fromList, toList,
                    lookup,

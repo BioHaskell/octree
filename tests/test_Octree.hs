@@ -2,22 +2,39 @@
 module TestOctree(main) where
 
 import Data.Octree.Internal
-import Data.Octree() -- test that interface module is not broken
+--import Data.Octree() -- test that interface module is not broken
 import Prelude hiding(lookup)
 import Data.List(sort, sortBy)
 
 import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
 
+import Data.Vector.Class
+
+-- | For testing purposes
+instance Ord Vector3 where
+  a `compare` b = pointwiseOrd $ zipWith compare (vunpack a) (vunpack b)
+
+pointwiseOrd []      = EQ
+pointwiseOrd (LT:cs) = LT
+pointwiseOrd (GT:cs) = GT
+pointwiseOrd (EQ:cs) = pointwiseOrd cs
+
+instance Arbitrary Vector3 where
+  arbitrary = do x <- arbitrary
+                 y <- arbitrary
+                 z <- arbitrary
+                 return $ Vector3 x y z
+
 -- | These are tests for internal helper functions:
 
 prop_cmp1 a b = cmp a b == joinStep (dx >= 0, dy >= 0, dz >= 0)
-  where Coord dx dy dz = a - b
+  where Vector3 dx dy dz = a - b
 
 prop_cmp2 a = cmp a origin == joinStep (dx >= 0, dy >= 0, dz >= 0)
-  where Coord dx dy dz = a
+  where Vector3 dx dy dz = a
 
-prop_stepDescription a b = splitStep (cmp a b) == (x a >= x b, y a >= y b, z a >= z b)
+prop_stepDescription a b = splitStep (cmp a b) == (v3x a >= v3x b, v3y a >= v3y b, v3z a >= v3z b)
 
 prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality 
   where triangleInequality = (octantDistance' aptA (cmp ptB origin)) <= (dist aptA ptB)
@@ -38,6 +55,8 @@ prop_splitByPrime splitPt pt = (unLeaf . octreeStep ot . cmp pt $ splitPt) == [a
   where ot   = splitBy' Leaf splitPt [arg] 
         arg  = (pt, dist pt splitPt)
 
+
+prop_pickClosest :: (Eq a) => [(Vector3, a)] -> Vector3 -> Bool
 prop_pickClosest        l pt = pickClosest pt l == naiveNearest pt l
 
 -- | These are tests for exposed functions:
