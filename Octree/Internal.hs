@@ -257,9 +257,8 @@ candidates' pt node     = map findCandidates . sortBy compareDistance . octantDi
     compareDistance a b  = compare (snd a) (snd b)
 
 -- | Finds a given point, if it is in the tree.
-lookup pt (Leaf l) = listToMaybe . filter ((==pt) . fst) $ l
-lookup pt node     = lookup pt . octreeStep node . cmp pt . split $ node
-
+lookup (Leaf l) pt = listToMaybe . filter ((==pt) . fst) $ l
+lookup node     pt = flip lookup pt . octreeStep node . cmp pt . split $ node
 
 -- | Finds nearest neighbour for a given point.
 nearest pt (Leaf l) = pickClosest pt l

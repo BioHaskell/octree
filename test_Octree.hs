@@ -8,6 +8,7 @@ import Data.List(sort, sortBy)
 import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
 
+-- | These are tests for internal helper functions:
 
 prop_cmp1 a b = cmp a b == joinStep (dx >= 0, dy >= 0, dz >= 0)
   where Coord dx dy dz = a - b
@@ -36,10 +37,17 @@ prop_splitByPrime splitPt pt = (unLeaf . octreeStep ot . cmp pt $ splitPt) == [a
   where ot   = splitBy' Leaf splitPt [arg] 
         arg  = (pt, dist pt splitPt)
 
+prop_pickClosest        l pt = pickClosest pt l == naiveNearest pt l
+
+-- | These are tests for exposed functions:
+
+prop_lookup l = all isIn l
+  where ot = fromList l
+        isIn x = lookup ot (fst x) == Just x
+
 prop_fromToList         l = sort l == (sort . toList . fromList $ l)
 prop_insertionPreserved l = sort l == (sort . toList . foldr insert (Leaf []) $ l)
 prop_nearest            l pt = nearest pt (fromList l) == naiveNearest pt l
-prop_pickClosest        l pt = pickClosest pt l == naiveNearest pt l
 prop_naiveWithinRange   r l pt = naiveWithinRange r pt l == (sort . map fst . withinRange r pt . fromList . tuplify pt $ l)
 
 tuplify pt = map (\a -> (a, dist pt a))
