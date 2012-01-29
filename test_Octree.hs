@@ -1,7 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module TestOctree(main) where
 
-import Octree.Internal
+import Data.Octree.Internal
+import Data.Octree() -- test that interface module is not broken
 import Prelude hiding(lookup)
 import Data.List(sort, sortBy)
 

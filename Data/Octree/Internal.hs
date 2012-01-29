@@ -1,15 +1,15 @@
 {-# LANGUAGE MagicHash, ScopedTypeVariables, RecordWildCards, TemplateHaskell #-}
-module Octree.Internal(Coord(..), dist,
-                       Octree(..), lookup, neighbors, nearest, withinRange, fromList, toList, insert,
-                       -- internal
-                       ODir,
-                       octreeStep, octantDistance, splitBy', joinStep, splitStep, allOctants, octantDistance',
-                       cmp, origin,
-                       pickClosest
-                       ) where
+module Data.Octree.Internal(Coord(..), dist,
+                            Octree(..), lookup, neighbors, nearest, withinRange, fromList, toList, insert,
+                            -- internal
+                            ODir,
+                            octreeStep, octantDistance, splitBy', joinStep, splitStep, allOctants, octantDistance',
+                            cmp, origin,
+                            pickClosest
+                            ) where
 
 import Text.Show
-import GHC.Real
+--import GHC.Real
 import Prelude hiding(lookup)
 -- testing
 import Data.List(sort, sortBy)
@@ -68,7 +68,8 @@ instance Fractional Coord
                     y = y a / y b,
                     z = z a / z b }
     recip a = fromInteger 1 / a
-    fromRational (a :% b) = fromInteger a / fromInteger b
+    fromRational r = Coord { x = f, y = f, z = f }
+      where f = fromRational r
 
 
 data Octree a = Node { split :: Coord,
