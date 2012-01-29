@@ -9,19 +9,12 @@ module Data.Octree.Internal(Coord(..), dist,
                             ) where
 
 import Text.Show
---import GHC.Real
 import Prelude hiding(lookup)
--- testing
 import Data.List(sort, sortBy)
 import Data.Maybe(maybeToList, listToMaybe)
 import Data.Bits((.&.))
---import Data.Traversable
---import Data.Foldable
 import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
--- TODO:
--- {-# LANGUAGE OverloadedStrings #-}
--- import Text.Show.ByteString
 
 data Coord = Coord { x, y, z :: !Double } deriving (Show, Eq, Ord)
 
@@ -76,6 +69,26 @@ data Octree a = Node { split :: Coord,
                        nwu, nwd, neu, ned, swu, swd, seu, sed :: Octree a } |
                 Leaf { unLeaf :: [(Coord, a)] }  deriving (Show)
 
+instance Functor Octree where
+  fmap f (Leaf l) = Leaf . fmap (\(c, a) -> (c, f a)) $  l
+  fmap f (Node { split = sp,
+                 nwu   = anwu,
+                 nwd   = anwd,
+                 neu   = aneu,
+                 ned   = aned,
+                 swu   = aswu,
+                 swd   = aswd,
+                 seu   = aseu,
+                 sed   = ased }) = Node { split = sp,
+                                          nwu   = fmap f anwu,
+                                          nwd   = fmap f anwd,
+                                          neu   = fmap f aneu,
+                                          ned   = fmap f aned,
+                                          swu   = fmap f aswu,
+                                          swd   = fmap f aswd,
+                                          seu   = fmap f aseu,
+                                          sed   = fmap f ased }
+
 -- TODO: assure that enum numbers are assigned in order
 data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enum, Show, Bounded)
 
@@ -94,7 +107,7 @@ prop_cmp2 a = cmp a origin == joinStep (dx >= 0, dy >= 0, dz >= 0)
 joinStep (cx, cy, cz) = toEnum (fromEnum cx + 2 * fromEnum cy + 4 * fromEnum cz)
 
 octreeStep ot NWU = nwu ot
-octreeStep ot NWD = nwd ot 
+octreeStep ot NWD = nwd ot
 octreeStep ot NEU = neu ot
 octreeStep ot NED = ned ot 
 octreeStep ot SWU = swu ot 

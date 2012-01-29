@@ -60,5 +60,15 @@ naiveNearest pt l = if byDist == [] then Nothing else Just . head $ byDist
 
 naiveWithinRange r pt l = sort . filter (\p -> dist pt p <= r) $ l
 
+-- unfortunately there is no Arbitrary for (a -> b)
+-- since generic properties are quite common, I wonder how to force Quickcheck to default something reasonable?
+prop_fmap1 l = genericProperty_fmap (+1) l
+prop_fmap2 l = genericProperty_fmap (*2) l
+prop_fmap3 l = genericProperty_fmap show l
+
+genericProperty_fmap f l = (sort . mapSnd f $ l) == (sort . toList . fmap f . fromList $ l)
+  where
+    mapSnd :: (a -> b) -> [(c, a)] -> [(c, b)]
+    mapSnd f l = map (\(c, a) -> (c, f a)) l
 
 main = do $quickCheckAll
