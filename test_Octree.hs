@@ -5,15 +5,6 @@ import Octree.Internal
 import Prelude hiding(lookup)
 import Data.List(sort, sortBy)
 
-{-
-import Text.Show
-import GHC.Real
--- testing
-import Data.Maybe(maybeToList)
-import Data.Bits((.&.))
---import Data.Traversable
---import Data.Foldable
--}
 import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
 
@@ -41,10 +32,9 @@ prop_octantDistanceNoGreaterThanInterpointDistanceZero ptA ptB = triangleInequal
 prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
   where testFun odir = (octantDistance (pt - vp) odir) <= dist pt vp
 
-prop_splitByPrime split pt = (unLeaf . octreeStep step $ ot) == [arg]
-  where ot   = splitBy' Leaf split [arg] 
-        step = cmp pt split
-        arg  = (pt, dist pt split)
+prop_splitByPrime splitPt pt = (unLeaf . octreeStep ot . cmp pt $ splitPt) == [arg]
+  where ot   = splitBy' Leaf splitPt [arg] 
+        arg  = (pt, dist pt splitPt)
 
 prop_fromToList         l = sort l == (sort . toList . fromList $ l)
 prop_insertionPreserved l = sort l == (sort . toList . foldr insert (Leaf []) $ l)

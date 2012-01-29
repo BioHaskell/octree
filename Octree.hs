@@ -7,7 +7,8 @@ module Octree(Octree,
               insert,
               neighbors,
               nearest,
-              withinRange)
+              withinRange,
+              boundingBox)
 where
 
 import Prelude hiding(lookup)

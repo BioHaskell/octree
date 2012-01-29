@@ -5,7 +5,6 @@ module Octree.Internal(Coord(..), dist,
                        ODir,
                        octreeStep, octantDistance, splitBy', joinStep, splitStep, allOctants, octantDistance',
                        cmp, origin,
-                       unLeaf,
                        pickClosest
                        ) where
 
@@ -14,7 +13,7 @@ import GHC.Real
 import Prelude hiding(lookup)
 -- testing
 import Data.List(sort, sortBy)
-import Data.Maybe(maybeToList)
+import Data.Maybe(maybeToList, listToMaybe)
 import Data.Bits((.&.))
 --import Data.Traversable
 --import Data.Foldable
@@ -93,14 +92,14 @@ prop_cmp2 a = cmp a origin == joinStep (dx >= 0, dy >= 0, dz >= 0)
 
 joinStep (cx, cy, cz) = toEnum (fromEnum cx + 2 * fromEnum cy + 4 * fromEnum cz)
 
-octreeStep NWU = nwu
-octreeStep NWD = nwd
-octreeStep NEU = neu
-octreeStep NED = ned
-octreeStep SWU = swu
-octreeStep SWD = swd
-octreeStep SEU = seu
-octreeStep SED = sed
+octreeStep ot NWU = nwu ot
+octreeStep ot NWD = nwd ot 
+octreeStep ot NEU = neu ot
+octreeStep ot NED = ned ot 
+octreeStep ot SWU = swu ot 
+octreeStep ot SWD = swd ot 
+octreeStep ot SEU = seu ot 
+octreeStep ot SED = sed ot
 
 splitStep :: ODir -> (Bool, Bool, Bool)
 splitStep step = ((val .&. 1) == 1, (val .&. 2) == 2, (val .&. 4) == 4)
@@ -227,7 +226,7 @@ toList' (n@Node {..}) tmp = a
 toList t = toList' t []
 
 pathTo pt (Leaf _) = []
-pathTo pt node     = aStep : pathTo pt (octreeStep aStep node)
+pathTo pt node     = aStep : pathTo pt (octreeStep node aStep)
   where aStep = cmp pt (split node)
 
 applyByPath f []          ot   = f ot
@@ -241,25 +240,33 @@ applyByPath f (step:path) node = case step of
                                    SEU -> node{ seu = applyByPath f path (seu node) }
                                    SED -> node{ sed = applyByPath f path (sed node) }
 
-lookup      = undefined
--- TODO: think about re-balancing
+-- | Inserts a point into an Octree.
+-- | NOTE: insert accepts duplicate points, but lookup would not find them - use withinRange in such case.
 insert (pt, dat) ot = applyByPath insert' path ot
-  where path = pathTo pt ot
+  where path             = pathTo pt ot
         insert' (Leaf l) = fromList ((pt, dat) : l)
 neighbors   = undefined
 
+
+-- | Internal: finds candidates for nearest neighbour lazily for each octant;
+-- | they are returned in a list of (octant, min. bound for distance, Maybe candidate) tuples.
 candidates' pt (Leaf l) = []
 candidates' pt node     = map findCandidates . sortBy compareDistance . octantDistances $ pt - split node
   where
-    findCandidates (octant, d) = (octant, d, maybeToList . pickClosest pt . toList . octreeStep octant $ node)
+    findCandidates (octant, d) = (octant, d, maybeToList . pickClosest pt . toList . octreeStep node $ octant)
     compareDistance a b  = compare (snd a) (snd b)
 
--- TODO: nearest
+-- | Finds a given point, if it is in the tree.
+lookup pt (Leaf l) = listToMaybe . filter ((==pt) . fst) $ l
+lookup pt node     = lookup pt . octreeStep node . cmp pt . split $ node
+
+
+-- | Finds nearest neighbour for a given point.
 nearest pt (Leaf l) = pickClosest pt l
 nearest pt node     = selectFrom candidates
   where candidates                 = map findCandidate . sortBy compareDistance . octantDistances $ pt - split node
         compareDistance a b  = compare (snd a) (snd b)
-        findCandidate ( octant, d) = (maybeToList . nearest pt $ octreeStep octant $ node, d)
+        findCandidate (octant, d) = (maybeToList . nearest pt $ octreeStep node $ octant, d)
         selectFrom (([],     _d) : cs) = selectFrom       cs
         selectFrom (([best], _d) : cs) = selectFrom' best cs
         selectFrom []                  = Nothing
@@ -286,29 +293,5 @@ withinRange r pt node     = (concat               .             -- merge results
                              filter ((<=r) . snd) .             -- discard octants that are out of range
                              octantDistances $ pt - split node) -- find octant distances
   where
-    recurseOctant ( octant, d) = withinRange r pt $ octreeStep octant node
+    recurseOctant ( octant, d) = withinRange r pt . octreeStep node $ octant
 
-{-
--- QuickCheck
-prop_fromToList         l = sort l == (sort . toList . fromList $ l)
-prop_insertionPreserved l = sort l == (sort . toList . foldr insert (Leaf []) $ l)
-prop_nearest            l pt = nearest pt (fromList l) == naiveNearest pt l
-prop_pickClosest        l pt = pickClosest pt l == naiveNearest pt l
-prop_naiveWithinRange   r l pt = naiveWithinRange r pt l == (sort . map fst . withinRange r pt . fromList . tuplify pt $ l)
-
-tuplify pt = map (\a -> (a, dist pt a))
-
-compareDistance pt a b = compare (dist pt (fst a)) (dist pt (fst b))
-
-naiveNearest pt l = if byDist == [] then Nothing else Just . head $ byDist
-  where byDist = sortBy (compareDistance pt) l
-
-naiveWithinRange r pt l = sort . filter (\p -> dist pt p <= r) $ l
-
-
-runTests = $quickCheckAll
-
--- here testing...
-main = do putStrLn "OK!"
-          $quickCheckAll
--}
