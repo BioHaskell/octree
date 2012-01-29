@@ -4,6 +4,7 @@ module Octree(Octree,
               lookup,
               insert,
               neighbors,
+              nearest,
               withinRange)
 where
 
@@ -282,18 +283,31 @@ pickClosest pt (a:as) = Just $ foldr (pickCloser pt) a as
 pickCloser pt va@(a, _a) vb@(b, _b) = if dist pt a <= dist pt b
                                         then va
                                         else vb
-withinRange = undefined
+
+withinRange r pt (Leaf l) = filter (\(lpt, _) -> dist pt lpt <= r) l
+withinRange r pt node     = (concat               .             -- merge results
+                             map recurseOctant    .             -- recurse over remaining octants
+                             filter ((<=r) . snd) .             -- discard octants that are out of range
+                             octantDistances $ pt - split node) -- find octant distances
+  where
+    recurseOctant ( octant, d) = withinRange r pt $ octreeStep octant node
 
 -- QuickCheck
 prop_fromToList         l = sort l == (sort . toList . fromList $ l)
 prop_insertionPreserved l = sort l == (sort . toList . foldr insert (Leaf []) $ l)
-prop_nearest            l pt = nearest pt (fromList l) == naiveNearest l pt
-prop_pickClosest        l pt = pickClosest pt l == naiveNearest l pt
+prop_nearest            l pt = nearest pt (fromList l) == naiveNearest pt l
+prop_pickClosest        l pt = pickClosest pt l == naiveNearest pt l
+prop_naiveWithinRange   r l pt = naiveWithinRange r pt l == (sort . map fst . withinRange r pt . fromList . tuplify pt $ l)
+
+tuplify pt = map (\a -> (a, dist pt a))
 
 compareDistance pt a b = compare (dist pt (fst a)) (dist pt (fst b))
 
-naiveNearest l pt = if byDist == [] then Nothing else Just . head $ byDist
+naiveNearest pt l = if byDist == [] then Nothing else Just . head $ byDist
   where byDist = sortBy (compareDistance pt) l
+
+naiveWithinRange r pt l = sort . filter (\p -> dist pt p <= r) $ l
+
 
 runTests = $quickCheckAll
 
