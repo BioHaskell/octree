@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash, ScopedTypeVariables, RecordWildCards, TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables, RecordWildCards #-}
 module Data.Octree.Internal(Vector3(..), dist,
                             Octree(..), lookup, neighbors, nearest, withinRange, fromList, toList, insert,
                             -- internal
@@ -18,22 +18,6 @@ import Data.Maybe(maybeToList, listToMaybe)
 import Data.Bits((.&.))
 import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
-
-x = v3x
-y = v3y
-z = v3z
-
-{-
-instance Arbitrary Vector3
-  where
-    arbitrary = do (a, b, c) <- arbitrary
-                   return Vector3 {x = a, y = b, z = c}
--}
-
---{-# OPTIONS_GHC -F -pgmFderive -optF-F #-}
---data Vector3 = Vector3 { x, y, z :: !Double } deriving (Show, Eq, Ord {-! Arbitrary !-} )
--- Using Neil Mitchell's 'derive'
-
 
 norm a = a `vdot` a
 
@@ -68,9 +52,9 @@ data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enu
 
 cmp :: Vector3 -> Vector3 -> ODir
 cmp ca cb = joinStep (cx, cy, cz)
-  where cx = x ca >= x cb
-        cy = y ca >= y cb
-        cz = z ca >= z cb
+  where cx = v3x ca >= v3x cb
+        cy = v3y ca >= v3y cb
+        cz = v3z ca >= v3z cb
 
 prop_cmp1 a b = cmp a b == joinStep (dx >= 0, dy >= 0, dz >= 0)
   where Vector3 dx dy dz = a - b
@@ -93,20 +77,18 @@ splitStep :: ODir -> (Bool, Bool, Bool)
 splitStep step = ((val .&. 1) == 1, (val .&. 2) == 2, (val .&. 4) == 4)
   where val = fromEnum step
 
-prop_stepDescription a b = splitStep (cmp a b) == (x a >= x b, y a >= y b, z a >= z b)
-
--- here we assume that a, b, c > 0 (otherwise we will take abs, and correspondingly invert results)
+-- | here we assume that a, b, c > 0 (otherwise we will take abs, and correspondingly invert results)
 -- same octant
 -- dp = difference between given point and the center of Octree node
 octantDistance' dp NEU = 0.0
 -- adjacent by plane
-octantDistance' dp NWU = x dp
-octantDistance' dp SEU = y dp
-octantDistance' dp NED = z dp
+octantDistance' dp NWU = v3x dp
+octantDistance' dp SEU = v3y dp
+octantDistance' dp NED = v3z dp
 -- adjacent by edge
-octantDistance' dp SWU = sqrt ( x dp * x dp + y dp * y dp)
-octantDistance' dp SED = sqrt ( y dp * y dp + z dp * z dp)
-octantDistance' dp NWD = sqrt ( x dp * x dp + z dp * z dp)
+octantDistance' dp SWU = sqrt ( v3x dp * v3x dp + v3y dp * v3y dp)
+octantDistance' dp SED = sqrt ( v3y dp * v3y dp + v3z dp * v3z dp)
+octantDistance' dp NWD = sqrt ( v3x dp * v3x dp + v3z dp * v3z dp)
 -- adjacent by point
 octantDistance' dp SWD = norm dp
 
@@ -120,10 +102,11 @@ octantDistance :: Vector3 -> ODir -> Double
 octantDistance dp odir = octantDistance' (abs dp) (toggle dp odir)
 
 toggle :: Vector3 -> ODir -> ODir
-toggle dp odir | (u, v, w) <- splitStep odir = 
-  joinStep ((x dp >= 0) `xor` not u,
-            (y dp >= 0) `xor` not v,
-            (z dp >= 0) `xor` not w)
+toggle dp odir = 
+  joinStep ((v3x dp >= 0) `xor` not u,
+            (v3y dp >= 0) `xor` not v,
+            (v3z dp >= 0) `xor` not w)
+  where (u, v, w) = splitStep odir
 
 
 prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality 
@@ -156,8 +139,8 @@ splitBy :: Vector3 -> [(Vector3, a)] -> ([(Vector3, a)],
                                      [(Vector3, a)],
                                      [(Vector3, a)],
                                      [(Vector3, a)])
-splitBy splitPoint [] = ([], [], [], [], [], [], [], [])
-splitBy splitPoint ((pt@(coord, a)):aList) =
+splitBy _splitPoint [] = ([], [], [], [], [], [], [], [])
+splitBy splitPoint  ((pt@(coord, a)):aList) =
    case i of
      SWD -> (pt:swd,    sed,    nwd,    ned,    swu,    seu,    nwu,    neu)
      SED -> (   swd, pt:sed,    nwd,    ned,    swu,    seu,    nwu,    neu)
@@ -200,17 +183,15 @@ splitBy' f splitPoint aList = Node { split = splitPoint,
     (tswd, tsed, tnwd, tned, tswu, tseu, tnwu, tneu) = tmap f $ splitBy splitPoint aList
 -- TODO: use arrays for memory savings
 
-toList' (Leaf l     ) tmp = l ++ tmp
-toList' (n@Node {..}) tmp = a
-  where
-    a = toList' nwu b
-    b = toList' nwd c
-    c = toList' neu d
-    d = toList' ned e
-    e = toList' swu f
-    f = toList' swd g
-    g = toList' seu h
-    h = toList' sed tmp
+toList' (Leaf l            ) tmp = l ++ tmp
+toList' (Node { nwu   = a,
+                nwd   = b,
+                neu   = c,
+                ned   = d,
+                swu   = e,
+                swd   = f,
+                seu   = g,
+                sed   = h }) tmp = foldr toList' tmp [a, b, c, d, e, f, g, h]
 toList t = toList' t []
 
 pathTo pt (Leaf _) = []
@@ -233,6 +214,7 @@ applyByPath f (step:path) node = case step of
 insert (pt, dat) ot = applyByPath insert' path ot
   where path             = pathTo pt ot
         insert' (Leaf l) = fromList ((pt, dat) : l)
+        insert' _        = error "Impossible in insert'"
 neighbors   = undefined
 
 
@@ -280,5 +262,5 @@ withinRange r pt node     = (concat               .             -- merge results
                              filter ((<=r) . snd) .             -- discard octants that are out of range
                              octantDistances $ pt - split node) -- find octant distances
   where
-    recurseOctant ( octant, d) = withinRange r pt . octreeStep node $ octant
+    recurseOctant (octant, _d) = withinRange r pt . octreeStep node $ octant
 

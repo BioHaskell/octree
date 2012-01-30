@@ -1,4 +1,3 @@
-{-# LANGUAGE MagicHash, ScopedTypeVariables, RecordWildCards, TemplateHaskell #-}
 module Data.Octree(Octree,
                    Vector3(..),
                    dist, 
