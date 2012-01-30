@@ -28,6 +28,10 @@ instance Arbitrary Vector3 where
 
 -- | These are tests for internal helper functions:
 
+-- for easier testing
+origin :: Vector3
+origin = fromInteger 0
+
 prop_cmp1 a b = cmp a b == joinStep (dx >= 0, dy >= 0, dz >= 0)
   where Vector3 dx dy dz = a - b
 

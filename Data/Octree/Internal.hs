@@ -4,14 +4,14 @@ module Data.Octree.Internal(Vector3(..), dist,
                             -- internal
                             ODir,
                             octreeStep, octantDistance, splitBy', joinStep, splitStep, allOctants, octantDistance',
-                            cmp, origin,
+                            cmp,
                             pickClosest
                             ) where
 
 import Data.Vector.V3
 import Data.Vector.Class
 
-import Text.Show
+--import Text.Show
 import Prelude hiding(lookup)
 import Data.List(sort, sortBy)
 import Data.Maybe(maybeToList, listToMaybe)
@@ -19,8 +19,10 @@ import Data.Bits((.&.))
 import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
 
+-- | norm of a vector
 norm a = a `vdot` a
 
+-- | distance between two vectors
 dist u v = norm (u - v) 
 
 data Octree a = Node { split :: Vector3,
@@ -47,23 +49,21 @@ instance Functor Octree where
                                           seu   = fmap f aseu,
                                           sed   = fmap f ased }
 
--- TODO: assure that enum numbers are assigned in order
+-- | Enumerated type to indicate octants in 3D-space relative to given center.
 data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enum, Show, Bounded)
 
+-- | Internal method that gives octant of a first vector relative to the second vector as a center.
 cmp :: Vector3 -> Vector3 -> ODir
 cmp ca cb = joinStep (cx, cy, cz)
   where cx = v3x ca >= v3x cb
         cy = v3y ca >= v3y cb
         cz = v3z ca >= v3z cb
 
-prop_cmp1 a b = cmp a b == joinStep (dx >= 0, dy >= 0, dz >= 0)
-  where Vector3 dx dy dz = a - b
-
-prop_cmp2 a = cmp a origin == joinStep (dx >= 0, dy >= 0, dz >= 0)
-  where Vector3 dx dy dz = a
-
+-- | Internal method that joins result of three coordinate comparisons and makes an octant name `ODir`
 joinStep (cx, cy, cz) = toEnum (fromEnum cx + 2 * fromEnum cy + 4 * fromEnum cz)
 
+-- | This function converts octant name to a function that steps down in an Octree towards this octant
+octreeStep ::  Octree a -> ODir -> Octree a
 octreeStep ot NWU = nwu ot
 octreeStep ot NWD = nwd ot
 octreeStep ot NEU = neu ot
@@ -73,11 +73,17 @@ octreeStep ot SWD = swd ot
 octreeStep ot SEU = seu ot 
 octreeStep ot SED = sed ot
 
+-- | Function that splits octant name into three boolean values, depending of sign of a relative coordinate in that octant.
+-- | (Coordinate is relative to a split point within Octree.)
 splitStep :: ODir -> (Bool, Bool, Bool)
 splitStep step = ((val .&. 1) == 1, (val .&. 2) == 2, (val .&. 4) == 4)
   where val = fromEnum step
 
--- | here we assume that a, b, c > 0 (otherwise we will take abs, and correspondingly invert results)
+-- | Internal function that finds a lower bound for a distance between a point of relative coordinates,
+-- | and octant of given name. It works only when coordinates of a given point are all positive.
+-- | It is used only by `octantDistance`, which respectively changes octant name depending of signs of
+-- | relative coordinates.
+-- here we assume that a, b, c > 0 (otherwise we will take abs, and correspondingly invert results)
 -- same octant
 -- dp = difference between given point and the center of Octree node
 octantDistance' dp NEU = 0.0
@@ -92,15 +98,21 @@ octantDistance' dp NWD = sqrt ( v3x dp * v3x dp + v3z dp * v3z dp)
 -- adjacent by point
 octantDistance' dp SWD = norm dp
 
+-- | List of all octant names.
 allOctants :: [ODir]
 allOctants = [minBound..maxBound]
 
+-- | Internal function that makes code clearer.
 xor :: Bool -> Bool -> Bool
 xor = (/=)
 
+-- | Finds a minimum bounds for a distance between a given point
+-- | in relative coordinates and a given octant.
 octantDistance :: Vector3 -> ODir -> Double
 octantDistance dp odir = octantDistance' (abs dp) (toggle dp odir)
 
+-- | Toggles octant names depending on a signs of vector coordinates
+-- | for use in octantDistance.
 toggle :: Vector3 -> ODir -> ODir
 toggle dp odir = 
   joinStep ((v3x dp >= 0) `xor` not u,
@@ -108,28 +120,11 @@ toggle dp odir =
             (v3z dp >= 0) `xor` not w)
   where (u, v, w) = splitStep odir
 
-
-prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality 
-  where triangleInequality = (octantDistance' aptA (cmp ptB origin)) <= (dist aptA ptB)
-        aptA               = abs ptA
-
-origin :: Vector3
-origin = fromInteger 0
-
+-- | Given a point in relative coordinates, gives list of all octants and minimum distances from this point.
 octantDistances dp = [(o, octantDistance dp o) | o <- allOctants]
 
-prop_octantDistanceNoGreaterThanInterpointDistance ptA ptB vp = triangleInequality || sameOctant
-  where triangleInequality = (octantDistance (ptA - vp) (cmp ptB vp)) <= (dist ptA ptB)
-        sameOctant         = (cmp ptA vp) == (cmp ptB vp)
-
-prop_octantDistanceNoGreaterThanInterpointDistanceZero ptA ptB = triangleInequality || sameOctant
-  where triangleInequality = (octantDistance ptA (cmp ptB origin)) <= (dist ptA ptB)
-        sameOctant         = (cmp ptA origin) == (cmp ptB origin)
-
-prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
-  where testFun odir = (octantDistance (pt - vp) odir) <= dist pt vp
-
-
+-- | splits a list of vectors and "payload" tuples
+-- | into a tuple with elements destined for different octants.
 -- FIXME: VERY IMPORTANT - add prop_splitBy vs cmp
 splitBy :: Vector3 -> [(Vector3, a)] -> ([(Vector3, a)],
                                      [(Vector3, a)],
@@ -140,7 +135,7 @@ splitBy :: Vector3 -> [(Vector3, a)] -> ([(Vector3, a)],
                                      [(Vector3, a)],
                                      [(Vector3, a)])
 splitBy _splitPoint [] = ([], [], [], [], [], [], [], [])
-splitBy splitPoint  ((pt@(coord, a)):aList) =
+splitBy  splitPoint ((pt@(coord, a)):aList) =
    case i of
      SWD -> (pt:swd,    sed,    nwd,    ned,    swu,    seu,    nwu,    neu)
      SED -> (   swd, pt:sed,    nwd,    ned,    swu,    seu,    nwu,    neu)
@@ -153,23 +148,32 @@ splitBy splitPoint  ((pt@(coord, a)):aList) =
   where i                                        = cmp coord splitPoint
         (swd, sed, nwd, ned, swu, seu, nwu, neu) = splitBy splitPoint aList
 
+{-
+-- | Internal Sums a list of vectors
 sumVector3s [(coord, _)]       = coord
 sumVector3s ((coord, _):aList) = coord + sumVector3s aList
+-}
+-- | Computes a center of mass for a given list of vectors - used to find a splitPoint.
+massCenter aList = sum (map fst aList) / count
+  where
+    count = fromInteger . toInteger . length $ aList
 
-massCenter aList = sumVector3s aList / (fromInteger . toInteger . length $ aList)
-
--- TODO: should be pre-defined in Data.Tuple or derived?
--- UTILITY
+-- | Helper function to map over an 8-element tuple
 tmap t (a, b, c, d, e, f, g, h) = (t a, t b, t c, t d, t e, t f, t g, t h)
 
+-- | Maximum number of elements before Octree leaf is split.
 leafLimit :: Int
 leafLimit = 16
 
+-- | Creates an Octree from a list of (index, payload) tuples.
 fromList :: [(Vector3, a)] -> Octree a
 fromList aList = if length aList <= leafLimit
                    then Leaf aList
                    else let splitPoint :: Vector3 = massCenter aList
                         in splitBy' fromList splitPoint aList
+-- | Internal method, that splits a list into octants depending on coordinates,
+-- | and then applies a specified function to each of these sublists,
+-- | in order to create subnodes of the Octree
 splitBy' f splitPoint aList = Node { split = splitPoint,
                                      nwu   = tnwu,
                                      nwd   = tnwd,
@@ -183,6 +187,9 @@ splitBy' f splitPoint aList = Node { split = splitPoint,
     (tswd, tsed, tnwd, tned, tswu, tseu, tnwu, tneu) = tmap f $ splitBy splitPoint aList
 -- TODO: use arrays for memory savings
 
+-- | Internal method that prepends contents of the given subtree to a list
+-- | given as argument.
+
 toList' (Leaf l            ) tmp = l ++ tmp
 toList' (Node { nwu   = a,
                 nwd   = b,
@@ -194,10 +201,14 @@ toList' (Node { nwu   = a,
                 sed   = h }) tmp = foldr toList' tmp [a, b, c, d, e, f, g, h]
 toList t = toList' t []
 
+-- | Finds a path to a Leaf where a given point should be,
+-- | and returns a list of octant names.
 pathTo pt (Leaf _) = []
 pathTo pt node     = aStep : pathTo pt (octreeStep node aStep)
   where aStep = cmp pt (split node)
 
+-- | Applies a given function to a node specified by a path (list of octant names),
+-- | and then returns a modified Octree.
 applyByPath f []          ot   = f ot
 applyByPath f (step:path) node = case step of
                                    NWU -> node{ nwu = applyByPath f path (nwu node) }
@@ -250,12 +261,14 @@ nearest pt node     = selectFrom candidates
                              else next
         selectFrom' best []                                          = Just best
 
+-- | Internal method that picks from a given list a point closest to argument, 
 pickClosest pt []     = Nothing
 pickClosest pt (a:as) = Just $ foldr (pickCloser pt) a as
 pickCloser pt va@(a, _a) vb@(b, _b) = if dist pt a <= dist pt b
                                         then va
                                         else vb
 
+-- | Returns all points within Octree that are within a given distance from argument.
 withinRange r pt (Leaf l) = filter (\(lpt, _) -> dist pt lpt <= r) l
 withinRange r pt node     = (concat               .             -- merge results
                              map recurseOctant    .             -- recurse over remaining octants
