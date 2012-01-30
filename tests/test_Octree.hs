@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module TestOctree(main) where
+module Main(main) where
 
 import Data.Octree.Internal
 --import Data.Octree() -- test that interface module is not broken

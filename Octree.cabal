@@ -1,5 +1,5 @@
 name:                Octree
-version:             0.2
+version:             0.2.1
 stability:           beta
 homepage:            https://github.com/mgajda/octree
 package-url:         http://hackage.haskell.org/package/octree
@@ -27,11 +27,12 @@ source-repository head
 Library
    build-depends:    base>=4.0, base <4.6, AC-Vector >= 2.3.0, QuickCheck >= 2.4.0
    exposed-modules:  Data.Octree
+   other-modules:    Data.Octree.Internal
    exposed:          True
    extensions:       ScopedTypeVariables
 
 -- I do not know how to make it work. To test use: runghc tests/test_Octree.hs
---Test-suite test_Octree
---  Type:              exitcode-stdio-1.0
---  Build-Depends:     base>=4.0, base<4.6
---  Main-is:           tests/test_Octree.hs
+Test-suite test_Octree
+  Type:              exitcode-stdio-1.0
+  Build-depends:     base>=4.0, base <4.6, AC-Vector >= 2.3.0, QuickCheck >= 2.4.0
+  Main-is:           tests/test_Octree.hs
