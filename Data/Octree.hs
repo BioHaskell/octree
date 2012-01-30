@@ -4,7 +4,6 @@ module Data.Octree(Octree,
                    fromList, toList,
                    lookup,
                    insert,
-                   neighbors,
                    nearest,
                    withinRange)
 where
