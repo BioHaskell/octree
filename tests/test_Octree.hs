@@ -44,13 +44,18 @@ prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality
   where triangleInequality = (octantDistance' aptA (cmp ptB origin)) <= (dist aptA ptB)
         aptA               = abs ptA
 
-prop_octantDistanceNoGreaterThanInterpointDistance ptA ptB vp = triangleInequality || sameOctant
+prop_octantDistanceNoGreaterThanInterpointDistance ptA ptB vp = triangleInequality
   where triangleInequality = (octantDistance (ptA - vp) (cmp ptB vp)) <= (dist ptA ptB)
         sameOctant         = (cmp ptA vp) == (cmp ptB vp)
 
-prop_octantDistanceNoGreaterThanInterpointDistanceZero ptA ptB = triangleInequality || sameOctant
+prop_octantDistanceNoGreaterThanInterpointDistanceZero ptA ptB = triangleInequality
   where triangleInequality = (octantDistance ptA (cmp ptB origin)) <= (dist ptA ptB)
         sameOctant         = (cmp ptA origin) == (cmp ptB origin)
+
+prop_octantDistanceNoGreaterThanInterpointDistanceZero0 ptA ptB = triangleInequality
+  where triangleInequality = (octantDistance aptA (cmp ptB origin)) <= (dist aptA ptB)
+        sameOctant         = (cmp aptA origin) == (cmp ptB origin)
+        aptA               = abs ptA
 
 prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
   where testFun odir = (octantDistance (pt - vp) odir) <= dist pt vp

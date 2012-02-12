@@ -20,11 +20,11 @@ import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
 
 -- | norm of a vector
-norm ::  Vector v => v -> Scalar
+norm ::  Vector3 -> Double
 norm a = sqrt (a `vdot` a)
 
 -- | distance between two vectors
-dist ::  Vector v => v -> v -> Scalar
+dist ::  Vector3 -> Vector3 -> Double
 dist u v = norm (u - v) 
 
 data Octree a = Node { split :: Vector3,
@@ -153,11 +153,6 @@ splitBy  splitPoint ((pt@(coord, a)):aList) =
   where i                                        = cmp coord splitPoint
         (swd, sed, nwd, ned, swu, seu, nwu, neu) = splitBy splitPoint aList
 
-{-
--- | Internal Sums a list of vectors
-sumVector3s [(coord, _)]       = coord
-sumVector3s ((coord, _):aList) = coord + sumVector3s aList
--}
 -- | Computes a center of mass for a given list of vectors - used to find a splitPoint.
 massCenter ::  Fractional a => [(a, b)] -> a
 massCenter aList = sum (map fst aList) / count
@@ -279,7 +274,7 @@ nearest node     pt = selectFrom candidates
         selectFrom' best []                                          = Just best
 
 -- | Internal method that picks from a given list a point closest to argument, 
-pickClosest ::  Vector v => v -> [(v, t)] -> Maybe (v, t)
+pickClosest ::  Vector3 -> [(Vector3, t)] -> Maybe (Vector3, t)
 pickClosest pt []     = Nothing
 pickClosest pt (a:as) = Just $ foldr (pickCloser pt) a as
 pickCloser pt va@(a, _a) vb@(b, _b) = if dist pt a <= dist pt b
