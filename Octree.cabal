@@ -1,5 +1,5 @@
 name:                Octree
-version:             0.2.1
+version:             0.2.2
 stability:           beta
 homepage:            https://github.com/mgajda/octree
 package-url:         http://hackage.haskell.org/package/octree
@@ -17,8 +17,7 @@ bug-reports:         mailto:mjgajda@googlemail.com
 
 build-type:          Simple
 cabal-version:       >=1.8
-tested-with:         GHC==7.0.4
--- Also tested with GHC-7.4rc2
+tested-with:         GHC==7.0.4,GHC-7.4.1
 
 source-repository head
   type:     git

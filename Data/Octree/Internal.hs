@@ -2,7 +2,7 @@
 module Data.Octree.Internal(Vector3(..), dist,
                             Octree(..), lookup, nearest, withinRange, fromList, toList, insert,
                             -- internal
-                            ODir,
+                            ODir(..),
                             octreeStep, octantDistance, splitBy', joinStep, splitStep, allOctants, octantDistance',
                             cmp,
                             pickClosest
@@ -21,7 +21,7 @@ import Test.QuickCheck.Arbitrary
 
 -- | norm of a vector
 norm ::  Vector v => v -> Scalar
-norm a = a `vdot` a
+norm a = sqrt (a `vdot` a)
 
 -- | distance between two vectors
 dist ::  Vector v => v -> v -> Scalar
