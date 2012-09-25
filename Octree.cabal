@@ -17,7 +17,7 @@ bug-reports:         mailto:mjgajda@googlemail.com
 
 build-type:          Simple
 cabal-version:       >=1.8
-tested-with:         GHC==7.0.4,GHC==7.4.1,GHC==7.4.2,GHC=7.6.0
+tested-with:         GHC==7.0.4,GHC==7.4.1,GHC==7.4.2,GHC==7.6.0
 
 source-repository head
   type:     git
