@@ -27,6 +27,7 @@ norm a = sqrt (a `vdot` a)
 dist ::  Vector3 -> Vector3 -> Double
 dist u v = norm (u - v) 
 
+-- | Datatype for nodes within Octree.
 data Octree a = Node { split :: Vector3,
                        nwu, nwd, neu, ned, swu, swd, seu, sed :: Octree a } |
                 Leaf { unLeaf :: [(Vector3, a)] }  deriving (Show)
