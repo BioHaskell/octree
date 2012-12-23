@@ -5,6 +5,7 @@ module Data.Octree(Octree,
                    lookup,
                    insert,
                    nearest,
+                   depth,
                    withinRange)
 where
 

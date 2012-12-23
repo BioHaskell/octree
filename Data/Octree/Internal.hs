@@ -5,7 +5,8 @@ module Data.Octree.Internal(Vector3(..), dist,
                             ODir(..),
                             octreeStep, octantDistance, splitBy', joinStep, splitStep, allOctants, octantDistance',
                             cmp,
-                            pickClosest
+                            pickClosest,
+                            depth
                             ) where
 
 import Data.Vector.V3
@@ -54,6 +55,10 @@ instance Functor Octree where
 
 -- | Enumerated type to indicate octants in 3D-space relative to given center.
 data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enum, Show, Bounded)
+
+depth :: Octree a -> Int
+depth (Leaf l) = 0
+depth (Node _ a b c d e f g h) = Prelude.maximum . map (\n -> depth n + 1) $ [a, b, c, d, e, f, g, h]
 
 -- | Internal method that gives octant of a first vector relative to the second vector as a center.
 cmp :: Vector3 -> Vector3 -> ODir
@@ -174,6 +179,7 @@ fromList aList = if length aList <= leafLimit
                    then Leaf aList
                    else let splitPoint :: Vector3 = massCenter aList
                         in splitBy' fromList splitPoint aList
+
 -- | Internal method, that splits a list into octants depending on coordinates,
 -- | and then applies a specified function to each of these sublists,
 -- | in order to create subnodes of the Octree
