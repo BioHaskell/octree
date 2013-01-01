@@ -10,6 +10,7 @@ import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
 
 import Data.Vector.Class
+import Control.Arrow(second)
 
 -- | For testing purposes
 instance Ord Vector3 where
@@ -30,7 +31,7 @@ instance Arbitrary Vector3 where
 
 -- for easier testing
 origin :: Vector3
-origin = fromInteger 0
+origin = 0
 
 prop_depth a = (depth oct <= ((+1)        . ceiling $ expectedDepth)) &&
                (depth oct >= ((\a -> a-1) . floor   $ expectedDepth))
@@ -47,24 +48,24 @@ prop_cmp2 a = cmp a origin == joinStep (dx >= 0, dy >= 0, dz >= 0)
 prop_stepDescription a b = splitStep (cmp a b) == (v3x a >= v3x b, v3y a >= v3y b, v3z a >= v3z b)
 
 prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality 
-  where triangleInequality = (octantDistance' aptA (cmp ptB origin)) <= (dist aptA ptB)
+  where triangleInequality = octantDistance' aptA (cmp ptB origin) <= dist aptA ptB
         aptA               = abs ptA
 
 prop_octantDistanceNoGreaterThanInterpointDistance ptA ptB vp = triangleInequality
-  where triangleInequality = (octantDistance (ptA - vp) (cmp ptB vp)) <= (dist ptA ptB)
-        sameOctant         = (cmp ptA vp) == (cmp ptB vp)
+  where triangleInequality = octantDistance (ptA - vp) (cmp ptB vp) <= dist ptA ptB
+        sameOctant         = cmp ptA vp == cmp ptB vp
 
 prop_octantDistanceNoGreaterThanInterpointDistanceZero ptA ptB = triangleInequality
-  where triangleInequality = (octantDistance ptA (cmp ptB origin)) <= (dist ptA ptB)
-        sameOctant         = (cmp ptA origin) == (cmp ptB origin)
+  where triangleInequality = octantDistance ptA (cmp ptB origin) <= dist ptA ptB
+        sameOctant         = cmp ptA origin == cmp ptB origin
 
 prop_octantDistanceNoGreaterThanInterpointDistanceZero0 ptA ptB = triangleInequality
-  where triangleInequality = (octantDistance aptA (cmp ptB origin)) <= (dist aptA ptB)
-        sameOctant         = (cmp aptA origin) == (cmp ptB origin)
+  where triangleInequality = octantDistance aptA (cmp ptB origin) <= dist aptA ptB
+        sameOctant         = cmp aptA origin                      == cmp ptB origin
         aptA               = abs ptA
 
 prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
-  where testFun odir = (octantDistance (pt - vp) odir) <= dist pt vp
+  where testFun odir = octantDistance (pt - vp) odir <= dist pt vp
 
 prop_splitByPrime splitPt pt = (unLeaf . octreeStep ot . cmp pt $ splitPt) == [arg]
   where ot   = splitBy' Leaf splitPt [arg] 
@@ -100,9 +101,6 @@ prop_fmap1 l = genericProperty_fmap (+1) l
 prop_fmap2 l = genericProperty_fmap (*2) l
 prop_fmap3 l = genericProperty_fmap show l
 
-genericProperty_fmap f l = (sort . mapSnd f $ l) == (sort . toList . fmap f . fromList $ l)
-  where
-    mapSnd :: (a -> b) -> [(c, a)] -> [(c, b)]
-    mapSnd f l = map (\(c, a) -> (c, f a)) l
+genericProperty_fmap f l = (sort . map (Control.Arrow.second f) $ l) == (sort . toList . fmap f . fromList $ l)
 
-main = do $quickCheckAll
+main = $quickCheckAll

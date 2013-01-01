@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables, DisambiguateRecordFields #-}
 module Data.Octree.Internal(Vector3(..), dist,
                             Octree(..), lookup, nearest, withinRange, fromList, toList, insert,
                             -- internal
@@ -17,6 +17,7 @@ import Prelude hiding(lookup)
 import Data.List(sort, sortBy)
 import Data.Maybe(maybeToList, listToMaybe)
 import Data.Bits((.&.))
+import Control.Arrow(second)
 import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
 
@@ -34,7 +35,7 @@ data Octree a = Node { split :: Vector3,
                 Leaf { unLeaf :: [(Vector3, a)] }  deriving (Show)
 
 instance Functor Octree where
-  fmap f (Leaf l) = Leaf . fmap (\(c, a) -> (c, f a)) $  l
+  fmap f (Leaf l) = Leaf . fmap (Control.Arrow.second f) $  l
   fmap f (Node { split = sp,
                  nwu   = anwu,
                  nwd   = anwd,
@@ -264,7 +265,7 @@ nearest (Leaf l) pt = pickClosest pt l
 nearest node     pt = selectFrom candidates
   where candidates                 = map findCandidate . sortBy compareDistance . octantDistances $ pt - split node
         compareDistance a b  = compare (snd a) (snd b)
-        findCandidate (octant, d) = (maybeToList . nearest' $ octreeStep node $ octant, d)
+        findCandidate (octant, d) = (maybeToList . nearest' . octreeStep node $ octant, d)
         selectFrom (([],     _d) : cs) = selectFrom       cs
         selectFrom (([best], _d) : cs) = selectFrom' best cs
         selectFrom []                  = Nothing
@@ -291,10 +292,9 @@ pickCloser pt va@(a, _a) vb@(b, _b) = if dist pt a <= dist pt b
 -- | Returns all points within Octree that are within a given distance from argument.
 withinRange ::  Scalar -> Vector3 -> Octree a -> [(Vector3, a)]
 withinRange r pt (Leaf l) = filter (\(lpt, _) -> dist pt lpt <= r) l
-withinRange r pt node     = (concat               .             -- merge results
-                             map recurseOctant    .             -- recurse over remaining octants
-                             filter ((<=r) . snd) .             -- discard octants that are out of range
-                             octantDistances $ pt - split node) -- find octant distances
+withinRange r pt node     = concatMap recurseOctant           . -- recurse over remaining octants, and merge results
+                            filter ((<=r) . snd)              . -- discard octants that are out of range
+                            octantDistances $ pt - split node   -- find octant distances
   where
     recurseOctant (octant, _d) = withinRange r pt . octreeStep node $ octant
 
