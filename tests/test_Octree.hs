@@ -32,8 +32,10 @@ instance Arbitrary Vector3 where
 origin :: Vector3
 origin = fromInteger 0
 
-prop_depth a = depth oct <= ((+16) . ceiling . (logBase 8 :: Double -> Double) . fromIntegral . length $ a)
+prop_depth a = (depth oct <= ((+1)        . ceiling $ expectedDepth)) &&
+               (depth oct >= ((\a -> a-1) . floor   $ expectedDepth))
   where
+    expectedDepth = (logBase 8 :: Double -> Double) . fromIntegral . length $ a
     oct :: Octree Int = fromList a
 
 prop_cmp1 a b = cmp a b == joinStep (dx >= 0, dy >= 0, dz >= 0)
