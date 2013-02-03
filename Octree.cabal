@@ -1,5 +1,5 @@
 name:                Octree
-version:             0.3
+version:             0.4
 stability:           beta
 homepage:            https://github.com/mgajda/octree
 package-url:         http://hackage.haskell.org/package/octree
