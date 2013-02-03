@@ -103,4 +103,12 @@ prop_fmap3 l = genericProperty_fmap show l
 
 genericProperty_fmap f l = (sort . map (Control.Arrow.second f) $ l) == (sort . toList . fmap f . fromList $ l)
 
+prop_depth_empty = depth (Leaf []) == 0
+
+prop_depth_upper_bound l = depth ot <= max 0 (ceiling . logBase 2 . realToFrac $ size) -- worst splitting ratio possible when we take midpoint (and inputs are colinear)
+  where ot   = fromList l
+        size = length l
+
+prop_size l = size (fromList l) == length l
+
 main = $quickCheckAll

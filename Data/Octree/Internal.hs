@@ -6,7 +6,7 @@ module Data.Octree.Internal(Vector3(..), dist,
                             octreeStep, octantDistance, splitBy', joinStep, splitStep, allOctants, octantDistance',
                             cmp,
                             pickClosest,
-                            depth
+                            depth, size
                             ) where
 
 import Data.Vector.V3
@@ -56,10 +56,6 @@ instance Functor Octree where
 
 -- | Enumerated type to indicate octants in 3D-space relative to given center.
 data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enum, Show, Bounded)
-
-depth :: Octree a -> Int
-depth (Leaf l) = 0
-depth (Node _ a b c d e f g h) = Prelude.maximum . map (\n -> depth n + 1) $ [a, b, c, d, e, f, g, h]
 
 -- | Internal method that gives octant of a first vector relative to the second vector as a center.
 cmp :: Vector3 -> Vector3 -> ODir
@@ -297,4 +293,14 @@ withinRange r pt node     = concatMap recurseOctant           . -- recurse over 
                             octantDistances $ pt - split node   -- find octant distances
   where
     recurseOctant (octant, _d) = withinRange r pt . octreeStep node $ octant
+
+subnodes (Leaf _) = []
+subnodes node     = map (octreeStep node) allOctants
+
+depth :: Octree a -> Int
+depth (Leaf _) = 0
+depth node     = foldr max 0 . map (+1) . map depth . subnodes $ node
+
+size :: Octree a -> Int
+size =  length . toList
 
