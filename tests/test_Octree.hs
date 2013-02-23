@@ -84,7 +84,7 @@ prop_lookup l = all isIn l
 prop_fromToList         l = sort l == (sort . toList . fromList $ l)
 prop_insertionPreserved l = sort l == (sort . toList . foldr insert (Leaf []) $ l)
 prop_nearest            l pt = nearest (fromList l) pt == naiveNearest pt l
-prop_naiveWithinRange   r l pt = naiveWithinRange r pt l == (sort . map fst . withinRange r pt . fromList . tuplify pt $ l)
+prop_naiveWithinRange   r l pt = naiveWithinRange r pt l == (sort . map fst . (\o -> withinRange o r pt) . fromList . tuplify pt $ l)
 
 tuplify pt = map (\a -> (a, dist pt a))
 

@@ -234,7 +234,7 @@ applyByPath f (step:path) node = case step of
 
 -- | Inserts a point into an Octree.
 -- | NOTE: insert accepts duplicate points, but lookup would not find them - use withinRange in such case.
-insert ::  (Vector3, a) -> Octree a -> Octree a
+insert :: (Vector3, a) -> Octree a -> Octree a
 insert (pt, dat) ot = applyByPath insert' path ot
   where path             = pathTo pt ot
         insert' (Leaf l) = fromList ((pt, dat) : l)
@@ -286,14 +286,15 @@ pickCloser pt va@(a, _a) vb@(b, _b) = if dist pt a <= dist pt b
                                         else vb
 
 -- | Returns all points within Octree that are within a given distance from argument.
-withinRange ::  Scalar -> Vector3 -> Octree a -> [(Vector3, a)]
-withinRange r pt (Leaf l) = filter (\(lpt, _) -> dist pt lpt <= r) l
-withinRange r pt node     = concatMap recurseOctant           . -- recurse over remaining octants, and merge results
+withinRange :: Octree a -> Scalar -> Vector3 -> [(Vector3, a)]
+withinRange (Leaf l) r pt = filter (\(lpt, _) -> dist pt lpt <= r) l
+withinRange node     r pt = concatMap recurseOctant           . -- recurse over remaining octants, and merge results
                             filter ((<=r) . snd)              . -- discard octants that are out of range
                             octantDistances $ pt - split node   -- find octant distances
   where
-    recurseOctant (octant, _d) = withinRange r pt . octreeStep node $ octant
+    recurseOctant (octant, _d) = (\o -> withinRange o r pt) . octreeStep node $ octant
 
+subnodes :: Octree a -> [Octree a]
 subnodes (Leaf _) = []
 subnodes node     = map (octreeStep node) allOctants
 
