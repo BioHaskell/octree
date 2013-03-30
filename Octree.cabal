@@ -26,7 +26,7 @@ source-repository head
 Library
    build-depends:    base>=4.0 && < 4.7, AC-Vector >= 2.3.0, QuickCheck >= 2.4.0
    exposed-modules:  Data.Octree
-   other-modules:    Data.Octree.Internal
+   other-modules:    Data.Octree.Internal, Data.Octree.Instances
    exposed:          True
    extensions:       ScopedTypeVariables
 
@@ -36,9 +36,9 @@ Test-suite test_Octree
   Main-is:           tests/test_Octree.hs
 
 Test-suite readme
-  type:           exitcode-stdio-1.0
+  type:           exitcode-stdio-1.0
   -- We have a symlink: README.lhs -> README.md
-  main-is:        README.lhs
+  main-is:        README.lhs
   Build-depends:  base>=4.0 && < 4.7, AC-Vector >= 2.3.0, QuickCheck >= 2.4.0, markdown-unlit
-  ghc-options:    -pgmL markdown-unlit
+  ghc-options:    -pgmL markdown-unlit
 

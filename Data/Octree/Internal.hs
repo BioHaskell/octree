@@ -6,7 +6,8 @@ module Data.Octree.Internal(Vector3(..), dist,
                             octreeStep, octantDistance, splitBy', joinStep, splitStep, allOctants, octantDistance',
                             cmp,
                             pickClosest,
-                            depth, size
+                            depth, size,
+                            subnodes
                             ) where
 
 import Data.Vector.V3
@@ -33,26 +34,6 @@ dist u v = norm (u - v)
 data Octree a = Node { split :: Vector3,
                        nwu, nwd, neu, ned, swu, swd, seu, sed :: Octree a } |
                 Leaf { unLeaf :: [(Vector3, a)] }  deriving (Show)
-
-instance Functor Octree where
-  fmap f (Leaf l) = Leaf . fmap (Control.Arrow.second f) $  l
-  fmap f (Node { split = sp,
-                 nwu   = anwu,
-                 nwd   = anwd,
-                 neu   = aneu,
-                 ned   = aned,
-                 swu   = aswu,
-                 swd   = aswd,
-                 seu   = aseu,
-                 sed   = ased }) = Node { split = sp,
-                                          nwu   = fmap f anwu,
-                                          nwd   = fmap f anwd,
-                                          neu   = fmap f aneu,
-                                          ned   = fmap f aned,
-                                          swu   = fmap f aswu,
-                                          swd   = fmap f aswd,
-                                          seu   = fmap f aseu,
-                                          sed   = fmap f ased }
 
 -- | Enumerated type to indicate octants in 3D-space relative to given center.
 data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enum, Show, Bounded)

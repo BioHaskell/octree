@@ -12,4 +12,5 @@ where
 
 import Prelude hiding(lookup)
 import Data.Octree.Internal
+import Data.Octree.Instances
 
