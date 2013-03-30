@@ -3,7 +3,7 @@ module Main(main) where
 
 import Data.Octree.Internal
 import Data.Octree.Instances()
---import Data.Octree() -- test that interface module is not broken
+import Data.Octree() -- test that interface module is not broken
 import Prelude hiding(lookup)
 import Data.List(sort, sortBy)
 
