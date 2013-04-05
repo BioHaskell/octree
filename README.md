@@ -1,4 +1,8 @@
+octree
+======
 This is a simple Octree implementation in Haskell.
+
+[![Build Status](https://api.travis-ci.org/mgajda/octree.png?branch=master)](https://api.travis-ci.org/mgajda/octree.png)
 
 To use simply:
 
