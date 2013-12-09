@@ -25,3 +25,8 @@ main = do let oct = fromList [(Vector3 1 2 3, "a"),
 *For now it uses AC-Vector package for vectors, but I may change it to use Tensor package used by OpenGL package, if there is interest.*
 *So far I still wait for package with vector operations (like dot, cross producton, vector projection and rejection) on Tensor types.*
 
+Official releases are on [Hackage](http://hackage.haskell.org/package/Octree).
+
+This package is also a part of
+[Stackage](http://daniel-diaz.github.io/stackagelist/)
+- a stable subset of Hackage.
