@@ -1,5 +1,5 @@
 name:                Octree
-version:             0.5.2
+version:             0.5.3
 stability:           beta
 homepage:            https://github.com/mgajda/octree
 package-url:         http://hackage.haskell.org/package/octree
@@ -26,7 +26,7 @@ source-repository head
 Library
    build-depends:    base>=4.0 && < 4.8, AC-Vector >= 2.3.0, QuickCheck >= 2.4.0
    exposed-modules:  Data.Octree
-   other-modules:    Data.Octree.Internal, Data.Octree.Instances
+   other-modules:    Data.Octree.Internal
    exposed:          True
    extensions:       ScopedTypeVariables
 

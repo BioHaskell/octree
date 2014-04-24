@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, DisambiguateRecordFields #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Data.Octree.Internal(Vector3(..), dist,
                             Octree(..), lookup, nearest, withinRange, fromList, toList, insert,
                             -- internal
@@ -10,11 +11,15 @@ module Data.Octree.Internal(Vector3(..), dist,
                             subnodes
                             ) where
 
+import Data.Functor    (Functor    (..))
+import Data.Foldable   (Foldable   (..))
+import Data.Traversable(Traversable(..))
+
 import Data.Vector.V3
 import Data.Vector.Class
 
 --import Text.Show
-import Prelude hiding(lookup)
+import Prelude hiding(lookup, foldr)
 import Data.List(sort, sortBy)
 import Data.Maybe(maybeToList, listToMaybe)
 import Data.Bits((.&.))
@@ -33,7 +38,7 @@ dist u v = norm (u - v)
 -- | Datatype for nodes within Octree.
 data Octree a = Node { split :: Vector3,
                        nwu, nwd, neu, ned, swu, swd, seu, sed :: Octree a } |
-                Leaf { unLeaf :: [(Vector3, a)] }  deriving (Show)
+                Leaf { unLeaf :: [(Vector3, a)] }  deriving (Show, Functor, Foldable, Traversable)
 
 -- | Enumerated type to indicate octants in 3D-space relative to given center.
 data ODir = SWD | SED | NWD | NED | SWU | SEU | NWU | NEU deriving (Eq, Ord, Enum, Show, Bounded)
