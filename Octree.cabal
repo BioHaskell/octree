@@ -8,6 +8,7 @@ description:         Octree data structure is relatively shallow data structure 
 category:            Data
 license:             BSD3
 license-file:        LICENSE
+extra-source-files:  changelog
 
 author:              Michal J. Gajda
 copyright:           Copyright by Michal J. Gajda '2012
