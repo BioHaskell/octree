@@ -286,7 +286,9 @@ subnodes node     = map (octreeStep node) allOctants
 
 depth :: Octree a -> Int
 depth (Leaf _) = 0
-depth node     = foldr max 0 . map (+1) . map depth . subnodes $ node
+depth node     = foldr max 0
+               . map ((+1) . depth)
+               . subnodes $ node
 
 size :: Octree a -> Int
 size =  length . toList
