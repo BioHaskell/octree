@@ -1,4 +1,7 @@
 -*-Changelog-*-
 
+0.5.4.1 Apr 2014
+	* Bump up upper bounds for GHC 7.10
+
 0.5.3 Apr 2014
 	* Switched to automatically derived Functor, Foldable, Traversable
