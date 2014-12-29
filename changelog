@@ -1,5 +1,8 @@
 -*-Changelog-*-
 
+0.5.4.2 Apr 2014
+	* Passes GHC 7.10 RC Dec 22 2014 build.
+
 0.5.4.1 Apr 2014
 	* Bump up upper bounds for GHC 7.10
 
