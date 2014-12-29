@@ -12,7 +12,7 @@ module Data.Octree.Internal(Vector3(..), dist,
                             ) where
 
 import Data.Functor    (Functor    (..))
-import Data.Foldable   (Foldable   (..))
+import Data.Foldable   (Foldable   (foldr))
 import Data.Traversable(Traversable(..))
 
 import Data.Vector.V3
