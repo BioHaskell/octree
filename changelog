@@ -1,5 +1,5 @@
 -*-Changelog-*-
-0.5.4.3 May 2015
+0.5.4.3 May 2016
 	* Relax base dependency for GHC 8.0 (and base 4.9)
 
 0.5.4.2 Apr 2014
