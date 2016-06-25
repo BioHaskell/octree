@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, ScopedTypeVariables #-}
-module Main(main) where
+module Main where
 
 import Data.Octree.Internal
 import Data.Octree() -- test that interface module is not broken
@@ -88,18 +88,22 @@ prop_naiveWithinRange   r l pt = naiveWithinRange r pt l == (sort . map fst . (\
 
 tuplify pt = map (\a -> (a, dist pt a))
 
-compareDistance pt a b = compare (dist pt (fst a)) (dist pt (fst b))
+compareDistance pt (a,_) (b,_) = compare (dist pt a) (dist pt b)
 
-naiveNearest pt l = if byDist == [] then Nothing else Just . head $ byDist
+naiveNearest pt [] = Nothing
+naiveNearest pt l  = Just $ head byDist
   where byDist = sortBy (compareDistance pt) l
 
-naiveWithinRange r pt l = sort . filter (\p -> dist pt p <= r) $ l
+naiveWithinRange r pt = sort . filter withinRange
+  where
+    withinRange p = dist pt p <= r
 
 -- unfortunately there is no Arbitrary for (a -> b)
 -- since generic properties are quite common, I wonder how to force Quickcheck to default something reasonable?
-prop_fmap1 l = genericProperty_fmap (+1) l
-prop_fmap2 l = genericProperty_fmap (*2) l
-prop_fmap3 l = genericProperty_fmap show l
+prop_fmap1,prop_fmap2 :: [(Vector3, Int)] -> Bool
+prop_fmap1 = genericProperty_fmap (+1)
+prop_fmap2 = genericProperty_fmap (*2)
+prop_fmap3 = genericProperty_fmap (show :: Int -> String)
 
 genericProperty_fmap f l = (sort . map (Control.Arrow.second f) $ l) == (sort . toList . fmap f . fromList $ l)
 
@@ -111,4 +115,7 @@ prop_depth_upper_bound l = depth ot <= max 0 (ceiling . logBase 2 . realToFrac $
 
 prop_size l = size (fromList l) == length l
 
+return []
+
 main = $quickCheckAll
+
