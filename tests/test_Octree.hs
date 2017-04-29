@@ -5,9 +5,12 @@ import Data.Octree.Internal
 import Data.Octree() -- test that interface module is not broken
 import Prelude hiding(lookup)
 import Data.List(sort, sortBy)
+import qualified Data.List as List (delete, nub)
 
 import Test.QuickCheck.All(quickCheckAll)
 import Test.QuickCheck.Arbitrary
+import Test.QuickCheck.Gen (elements)
+import Test.QuickCheck.Modifiers (NonEmptyList (..))
 
 import Data.Vector.Class
 import Control.Arrow(second)
@@ -26,6 +29,15 @@ instance Arbitrary Vector3 where
                  y <- arbitrary
                  z <- arbitrary
                  return $ Vector3 x y z
+
+data ElementListWithElement a = ElementListWithElement [(Vector3, a)] (Vector3, a) deriving (Show)
+
+instance Arbitrary a => Arbitrary (ElementListWithElement a) where
+  arbitrary = do
+    nonEmptyElementList <- arbitrary
+    let elementList = getNonEmpty nonEmptyElementList
+    element <- elements elementList
+    return $ ElementListWithElement elementList element
 
 -- | These are tests for internal helper functions:
 
@@ -83,6 +95,13 @@ prop_lookup l = all isIn l
 
 prop_fromToList         l = sort l == (sort . toList . fromList $ l)
 prop_insertionPreserved l = sort l == (sort . toList . foldr insert (Leaf []) $ l)
+prop_delete             (ElementListWithElement l e) = sort (List.delete e l) == (sort . toList . delete e . fromList $ l)
+prop_delete_empty       e = [] == (toList . delete e . fromList $ [])
+
+prop_delete_nonexisting :: forall t. Ord t => NonEmptyList (Vector3, t) -> Bool
+prop_delete_nonexisting l = sort uniqueListTail == (sort . toList . delete e . fromList $ uniqueListTail)
+  where uniqueList = List.nub $ getNonEmpty l
+        (e:uniqueListTail) = uniqueList
 prop_nearest            l pt = nearest (fromList l) pt == naiveNearest pt l
 prop_naiveWithinRange   r l pt = naiveWithinRange r pt l == (sort . map fst . (\o -> withinRange o r pt) . fromList . tuplify pt $ l)
 
