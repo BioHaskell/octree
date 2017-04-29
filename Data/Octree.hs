@@ -1,6 +1,6 @@
 module Data.Octree(Octree,
                    Vector3(..),
-                   dist, 
+                   dist,
                    fromList, toList,
                    lookup,
                    insert,

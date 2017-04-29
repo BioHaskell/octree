@@ -68,7 +68,7 @@ prop_octantDistanceNoGreaterThanCentroidDistance pt vp = all testFun allOctants
   where testFun odir = octantDistance (pt - vp) odir <= dist pt vp
 
 prop_splitByPrime splitPt pt = (unLeaf . octreeStep ot . cmp pt $ splitPt) == [arg]
-  where ot   = splitBy' Leaf splitPt [arg] 
+  where ot   = splitBy' Leaf splitPt [arg]
         arg  = (pt, dist pt splitPt)
 
 

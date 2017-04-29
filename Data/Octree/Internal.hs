@@ -33,7 +33,7 @@ norm a = sqrt (a `vdot` a)
 
 -- | distance between two vectors
 dist ::  Vector3 -> Vector3 -> Double
-dist u v = norm (u - v) 
+dist u v = norm (u - v)
 
 -- | Datatype for nodes within Octree.
 data Octree a = Node { split :: Vector3,
@@ -59,10 +59,10 @@ octreeStep ::  Octree a -> ODir -> Octree a
 octreeStep ot NWU = nwu ot
 octreeStep ot NWD = nwd ot
 octreeStep ot NEU = neu ot
-octreeStep ot NED = ned ot 
-octreeStep ot SWU = swu ot 
-octreeStep ot SWD = swd ot 
-octreeStep ot SEU = seu ot 
+octreeStep ot NED = ned ot
+octreeStep ot SWU = swu ot
+octreeStep ot SWD = swd ot
+octreeStep ot SEU = seu ot
 octreeStep ot SED = sed ot
 
 -- | Function that splits octant name into three boolean values, depending of sign of a relative coordinate in that octant.
@@ -107,7 +107,7 @@ octantDistance dp odir = octantDistance' (abs dp) (toggle dp odir)
 -- | Toggles octant names depending on a signs of vector coordinates
 -- | for use in octantDistance.
 toggle :: Vector3 -> ODir -> ODir
-toggle dp odir = 
+toggle dp odir =
   joinStep ((v3x dp >= 0) `xor` not u,
             (v3y dp >= 0) `xor` not v,
             (v3z dp >= 0) `xor` not w)
@@ -253,7 +253,7 @@ nearest node     pt = selectFrom candidates
         selectFrom []                  = Nothing
         nearest'   n                   = nearest n pt
 
-        
+
         selectFrom' best (([],     d) : cs)                          = selectFrom' best     cs
         -- TODO: FAILS: shortcut guard to avoid recursion over whole structure (since d is bound for distance within octant):
         selectFrom' best ((c,      d) : cs) | d > dist pt (fst best) = Just best
@@ -263,7 +263,7 @@ nearest node     pt = selectFrom candidates
                              else next
         selectFrom' best []                                          = Just best
 
--- | Internal method that picks from a given list a point closest to argument, 
+-- | Internal method that picks from a given list a point closest to argument,
 pickClosest ::  Vector3 -> [(Vector3, t)] -> Maybe (Vector3, t)
 pickClosest pt []     = Nothing
 pickClosest pt (a:as) = Just $ foldr (pickCloser pt) a as
@@ -292,4 +292,3 @@ depth node     = foldr max 0
 
 size :: Octree a -> Int
 size =  length . toList
-
