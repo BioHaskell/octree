@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, DisambiguateRecordFields #-}
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Data.Octree.Internal(Vector3(..), dist,
-                            Octree(..), lookup, nearest, withinRange, fromList, toList, insert,
+                            Octree(..), lookup, nearest, withinRange, fromList, toList, insert, delete, deleteBy,
                             -- internal
                             ODir(..),
                             octreeStep, octantDistance, splitBy', joinStep, splitStep, allOctants, octantDistance',
@@ -20,7 +20,7 @@ import Data.Vector.Class
 
 --import Text.Show
 import Prelude hiding(lookup, foldr)
-import Data.List(sort, sortBy)
+import qualified Data.List as List (delete, deleteBy, sortBy)
 import Data.Maybe(maybeToList, listToMaybe)
 import Data.Bits((.&.))
 import Control.Arrow(second)
@@ -33,7 +33,7 @@ norm a = sqrt (a `vdot` a)
 
 -- | distance between two vectors
 dist ::  Vector3 -> Vector3 -> Double
-dist u v = norm (u - v) 
+dist u v = norm (u - v)
 
 -- | Datatype for nodes within Octree.
 data Octree a = Node { split :: Vector3,
@@ -59,10 +59,10 @@ octreeStep ::  Octree a -> ODir -> Octree a
 octreeStep ot NWU = nwu ot
 octreeStep ot NWD = nwd ot
 octreeStep ot NEU = neu ot
-octreeStep ot NED = ned ot 
-octreeStep ot SWU = swu ot 
-octreeStep ot SWD = swd ot 
-octreeStep ot SEU = seu ot 
+octreeStep ot NED = ned ot
+octreeStep ot SWU = swu ot
+octreeStep ot SWD = swd ot
+octreeStep ot SEU = seu ot
 octreeStep ot SED = sed ot
 
 -- | Function that splits octant name into three boolean values, depending of sign of a relative coordinate in that octant.
@@ -107,7 +107,7 @@ octantDistance dp odir = octantDistance' (abs dp) (toggle dp odir)
 -- | Toggles octant names depending on a signs of vector coordinates
 -- | for use in octantDistance.
 toggle :: Vector3 -> ODir -> ODir
-toggle dp odir = 
+toggle dp odir =
   joinStep ((v3x dp >= 0) `xor` not u,
             (v3y dp >= 0) `xor` not v,
             (v3z dp >= 0) `xor` not w)
@@ -226,12 +226,27 @@ insert (pt, dat) ot = applyByPath insert' path ot
         insert' (Leaf l) = fromList ((pt, dat) : l)
         insert' _        = error "Impossible in insert'"
 
+-- | Deletes a point from an Octree.
+-- | NOTE: If there are duplicate points, it only deletes one of them.
+delete :: (Eq a) => (Vector3, a) -> Octree a -> Octree a
+delete tup@(pt, _) ot = applyByPath delete' path ot
+  where path             = pathTo pt ot
+        delete' (Leaf l) = fromList (List.delete tup l)
+        delete' _        = error "Impossible in delete'"
+
+-- | Deletes a point from an Octree with the provided equality check.
+-- | NOTE: If there are duplicate points, it only deletes one of them.
+deleteBy :: ((Vector3, a) -> (Vector3, a) -> Bool) -> (Vector3, a) -> Octree a -> Octree a
+deleteBy eq tup@(pt, _) ot = applyByPath deleteBy' path ot
+  where path             = pathTo pt ot
+        deleteBy' (Leaf l) = fromList (List.deleteBy eq tup l)
+        deleteBy' _        = error "Impossible in deleteBy'"
 
 -- | Internal: finds candidates for nearest neighbour lazily for each octant;
 -- | they are returned in a list of (octant, min. bound for distance, Maybe candidate) tuples.
 candidates' :: Vector3 -> Octree a -> [(ODir, Double, [(Vector3, a)])]
 candidates' pt (Leaf l) = []
-candidates' pt node     = map findCandidates . sortBy compareDistance . octantDistances $ pt - split node
+candidates' pt node     = map findCandidates . List.sortBy compareDistance . octantDistances $ pt - split node
   where
     findCandidates (octant, d) = (octant, d, maybeToList . pickClosest pt . toList . octreeStep node $ octant)
     compareDistance a b  = compare (snd a) (snd b)
@@ -245,7 +260,7 @@ lookup node     pt = flip lookup pt . octreeStep node . cmp pt . split $ node
 nearest :: Octree a -> Vector3 -> Maybe (Vector3, a)
 nearest (Leaf l) pt = pickClosest pt l
 nearest node     pt = selectFrom candidates
-  where candidates                 = map findCandidate . sortBy compareDistance . octantDistances $ pt - split node
+  where candidates                 = map findCandidate . List.sortBy compareDistance . octantDistances $ pt - split node
         compareDistance a b  = compare (snd a) (snd b)
         findCandidate (octant, d) = (maybeToList . nearest' . octreeStep node $ octant, d)
         selectFrom (([],     _d) : cs) = selectFrom       cs
@@ -253,7 +268,7 @@ nearest node     pt = selectFrom candidates
         selectFrom []                  = Nothing
         nearest'   n                   = nearest n pt
 
-        
+
         selectFrom' best (([],     d) : cs)                          = selectFrom' best     cs
         -- TODO: FAILS: shortcut guard to avoid recursion over whole structure (since d is bound for distance within octant):
         selectFrom' best ((c,      d) : cs) | d > dist pt (fst best) = Just best
@@ -263,7 +278,7 @@ nearest node     pt = selectFrom candidates
                              else next
         selectFrom' best []                                          = Just best
 
--- | Internal method that picks from a given list a point closest to argument, 
+-- | Internal method that picks from a given list a point closest to argument,
 pickClosest ::  Vector3 -> [(Vector3, t)] -> Maybe (Vector3, t)
 pickClosest pt []     = Nothing
 pickClosest pt (a:as) = Just $ foldr (pickCloser pt) a as
@@ -292,4 +307,3 @@ depth node     = foldr max 0
 
 size :: Octree a -> Int
 size =  length . toList
-
