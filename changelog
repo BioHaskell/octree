@@ -1,4 +1,8 @@
 -*-Changelog-*-
+0.5.4.4 Dec 2017
+	* Remove doctest since it is fragile (depends on markdown-unlit being
+	on path.)
+
 0.5.4.3 Nov 2017
 	* Relax deps for GHC 8.2
 
