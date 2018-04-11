@@ -32,7 +32,7 @@ Library
    build-depends:    base>=4.0 && < 4.11,
                      deepseq >= 1.2.0.0,
                      lens   >= 4.13.0,
-                     linear >= 1.20.0,
+                     linear >= 1.18.0,
                      QuickCheck >= 2.4.0
    exposed-modules:  Data.Octree
    other-modules:    Data.Octree.Internal
@@ -53,7 +53,7 @@ benchmark bench-octree
   other-modules:    Data.Octree.Internal
   main-is:          tests/benchmark.hs
   build-depends:    base >=4.0 && <4.11, deepseq, ghc-prim,
-                    linear >= 1.20.0, QuickCheck >= 2.8.0,
+                    linear >= 1.18.0, QuickCheck >= 2.8.0,
                     lens   >= 4.13.0,
                     criterion
   extensions:       ScopedTypeVariables
