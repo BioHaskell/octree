@@ -1,5 +1,5 @@
 name:                Octree
-version:             0.5.4.4
+version:             0.6.0.0
 stability:           beta
 homepage:            https://github.com/mgajda/octree
 package-url:         http://hackage.haskell.org/package/octree
@@ -29,7 +29,11 @@ source-repository head
   location: git@github.com:mgajda/octree.git
 
 Library
-   build-depends:    base>=4.0 && < 4.11, AC-Vector >= 2.3.0, QuickCheck >= 2.4.0
+   build-depends:    base>=4.0 && < 4.11,
+                     deepseq >= 1.4.3.0,
+                     lens   >= 4.16.0,
+                     linear >= 1.20.0,
+                     QuickCheck >= 2.4.0
    exposed-modules:  Data.Octree
    other-modules:    Data.Octree.Internal
    exposed:          True
@@ -37,13 +41,18 @@ Library
 
 Test-suite test_Octree
   Type:              exitcode-stdio-1.0
-  Build-depends:     base>=4.0 && < 4.11, AC-Vector >= 2.3.0, QuickCheck >= 2.8.0
+  Build-depends:     base>=4.0 && < 4.11, linear >= 1.20.0, QuickCheck >= 2.8.0,
+                     deepseq >= 1.4.3.0,
+                     lens   >= 4.16.0
   Main-is:           tests/test_Octree.hs
 
---Test-suite readme
---  type:           exitcode-stdio-1.0
---  -- We have a symlink: README.lhs -> README.md
---  main-is:        README.lhs
---  Build-depends:  base>=4.0 && < 4.11, AC-Vector >= 2.3.0, QuickCheck >= 2.4.0, markdown-unlit
---  ghc-options:    -pgmL markdown-unlit
+benchmark bench-octree
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   . tests
+  main-is:          benchmark.hs
+  build-depends:    base >=4.0 && <4.11, deepseq, ghc-prim,
+                    linear >= 1.20.0, QuickCheck >= 2.8.0,
+                    lens   >= 4.16.0,
+                    criterion
+  extensions:       ScopedTypeVariables
 

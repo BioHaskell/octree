@@ -1,5 +1,5 @@
 module Data.Octree(Octree,
-                   Vector3(..),
+                   Vector3,
                    dist,
                    fromList, toList,
                    lookup,
@@ -14,4 +14,3 @@ where
 
 import Prelude hiding(lookup)
 import Data.Octree.Internal
-
