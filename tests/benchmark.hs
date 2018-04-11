@@ -19,8 +19,9 @@ testData i = generate $ vectorOf i arbitrary
 
 main = defaultMain [
     bgroup "insert" [
-      bench (show i) $ nfIO (foldr insert (Leaf [])
-                               <$> testData i)
-      | i <- [10, 100, 1000, 10000]
+      let i=10^p
+      in bench (show i) $ nfIO (foldr insert (Leaf [])
+                                 <$> testData i)
+      | p <- [1..4]
     ]
   ]
