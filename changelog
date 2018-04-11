@@ -1,4 +1,8 @@
 -*-Changelog-*-
+0.6.0.0 Apr 2018
+	* Switched 3D vectors to `linear`.
+	* Added first benchmark.
+
 0.5.4.4 Dec 2017
 	* Remove doctest since it is fragile (depends on markdown-unlit being
 	on path.)

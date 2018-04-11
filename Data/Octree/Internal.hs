@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, DisambiguateRecordFields #-}
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module Data.Octree.Internal(Vector3(..), dist,
+module Data.Octree.Internal(Vector3(..), dist, v3x, v3y, v3z,
                             Octree(..), lookup, nearest, withinRange, fromList, toList, insert, delete, deleteBy,
                             -- internal
                             ODir(..),

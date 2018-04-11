@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Main where
 
 import Data.Octree.Internal
@@ -12,23 +13,14 @@ import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen (elements)
 import Test.QuickCheck.Modifiers (NonEmptyList (..))
 
-import Data.Vector.Class
+import Linear
 import Control.Arrow(second)
 
--- | For testing purposes
-instance Ord Vector3 where
-  a `compare` b = pointwiseOrd $ zipWith compare (vunpack a) (vunpack b)
-
-pointwiseOrd []      = EQ
-pointwiseOrd (LT:cs) = LT
-pointwiseOrd (GT:cs) = GT
-pointwiseOrd (EQ:cs) = pointwiseOrd cs
-
-instance Arbitrary Vector3 where
+instance Arbitrary (V3 Double) where
   arbitrary = do x <- arbitrary
                  y <- arbitrary
                  z <- arbitrary
-                 return $ Vector3 x y z
+                 return $ V3 x y z
 
 data ElementListWithElement a = ElementListWithElement [(Vector3, a)] (Vector3, a) deriving (Show)
 
@@ -48,18 +40,19 @@ origin = 0
 prop_depth a = (depth oct <= ((+1)        . ceiling $ expectedDepth)) &&
                (depth oct >= ((\a -> a-1) . floor   $ expectedDepth))
   where
-    expectedDepth = (logBase 8 :: Double -> Double) . fromIntegral . length $ a
+    expectedDepth = max 0
+                  $ (logBase 8 :: Double -> Double) . fromIntegral . length $ a
     oct :: Octree Int = fromList a
 
 prop_cmp1 a b = cmp a b == joinStep (dx >= 0, dy >= 0, dz >= 0)
-  where Vector3 dx dy dz = a - b
+  where V3 dx dy dz = a - b
 
 prop_cmp2 a = cmp a origin == joinStep (dx >= 0, dy >= 0, dz >= 0)
-  where Vector3 dx dy dz = a
+  where V3 dx dy dz = a
 
 prop_stepDescription a b = splitStep (cmp a b) == (v3x a >= v3x b, v3y a >= v3y b, v3z a >= v3z b)
 
-prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality 
+prop_octantDistanceNoGreaterThanInterpointDistance0 ptA ptB = triangleInequality
   where triangleInequality = octantDistance' aptA (cmp ptB origin) <= dist aptA ptB
         aptA               = abs ptA
 
@@ -137,4 +130,3 @@ prop_size l = size (fromList l) == length l
 return []
 
 main = $quickCheckAll
-
