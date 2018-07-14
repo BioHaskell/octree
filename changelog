@@ -1,4 +1,7 @@
 -*-Changelog-*-
+0.6.0.1 Jul 2018
+        * Update deps for GHC 8.4.3
+
 0.6.0.0 Apr 2018
 	* Switched 3D vectors to `linear`.
 	* Added first benchmark.

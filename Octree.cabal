@@ -1,5 +1,5 @@
 name:                Octree
-version:             0.6.0.0
+version:             0.6.0.1
 stability:           beta
 homepage:            https://github.com/mgajda/octree
 package-url:         http://hackage.haskell.org/package/octree
@@ -18,18 +18,18 @@ bug-reports:         mailto:mjgajda@googlemail.com
 
 build-type:          Simple
 cabal-version:       >=1.8
-tested-with:         GHC==7.6.3
-                    ,GHC==7.8.4
+tested-with:         GHC==7.8.4
                     ,GHC==7.10.3
                     ,GHC==8.0.1
                     ,GHC==8.2.2
+                    ,GHC==8.4.3
 
 source-repository head
   type:     git
   location: git@github.com:mgajda/octree.git
 
 Library
-   build-depends:    base>=4.0 && < 4.11,
+   build-depends:    base>=4.0 && < 4.12,
                      deepseq >= 1.2.0.0,
                      lens   >= 4.13.0,
                      linear >= 1.18.0,
